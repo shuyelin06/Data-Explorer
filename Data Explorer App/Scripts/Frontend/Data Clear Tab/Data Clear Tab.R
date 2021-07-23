@@ -8,5 +8,10 @@ dataClearTab <- tabPanel(
   actionButton(
     inputId = "clearDataButton", 
     label = "Clear Existing Data"
-    )
+    ),
+  
+  actionButton(
+    inputId = "clearSeasonDefButton",
+    label = "Clear Season Definitions"
+  )
 )

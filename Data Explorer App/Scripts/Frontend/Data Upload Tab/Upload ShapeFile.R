@@ -3,7 +3,7 @@ sfUploadNav <- tabPanel(
   
   fileInput(
     inputId = "sfFileUpload", 
-    label = "Upload A DBF File",
+    label = "Upload Files",
     multiple = TRUE,
     accept = c('.dbf', '.shp', '.sbn', '.sbx', '.shx', '.prj')
   ),
@@ -18,13 +18,9 @@ sfUploadNav <- tabPanel(
     label = "Name of Date Column"
   ),
   
-  radioButtons(
-    inputId = "sfRadioButton",
-    label = "Unique Animals?",
-    choices = c(
-      "Yes" = "yes",
-      "No" = "no"
-    )
+  checkboxInput(
+    inputId = "sfUniqueCheck",
+    label = "Unique?",
   ),
   
   actionButton(

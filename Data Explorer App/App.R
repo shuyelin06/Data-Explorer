@@ -3,6 +3,41 @@
 # rm(list = setdiff(ls(), lsf.str()))
 library(shiny)
 
+# ---
+# Variable Definitions
+
+# Defining global variables that many scripts use, including file paths. 
+# This could later be all held in some settings file for accessibility and viewability
+# ---
+
+# Path for the Migration Data ShapeFile (where data will be saved)
+dataFilePath <<- "./Data/Migration Data"
+
+# Path of Season Definitions Data
+bioYearPath <<- "./Data/Settings/Biological Year.csv"
+
+# Month Names Global Variable
+monthNames <<- data.frame(month = 1:12, name = c(
+  "January", 
+  "February", 
+  "March", 
+  "April", 
+  "May", 
+  "June", 
+  "July", 
+  "August", 
+  "September", 
+  "October", 
+  "November", 
+  "December"
+))
+
+# --- 
+# Application Set-Up 
+
+# Setting up the application and its settings
+# ---
+
 # Changing File Upload Size to a100 MB max
 options(shiny.maxRequestSize = 100 * 1024^2)
 

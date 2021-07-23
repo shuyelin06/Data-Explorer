@@ -48,7 +48,9 @@ observeEvent(input$sfSubmitButton, {
   
   # Checking if the animals are unique or not. 
   # If the animals are unique, we change the IDs of the animals whose IDs conflict with preexisting animals
-  if(input$sfRadioButton == "yes" & nrow(existingData) != 0){
+  if(input$sfUniqueCheck == TRUE & nrow(existingData) != 0){
+    print("Upload Data is Unique")
+    
     # Get the IDs in both data sets
     existingIDs <- unique(existingData$id)
     
