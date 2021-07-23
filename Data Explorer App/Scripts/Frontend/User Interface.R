@@ -4,6 +4,7 @@
 source("./Scripts/Frontend/Data Upload Tab/Data Upload Tab.R")
 source("./Scripts/Frontend/Data Definition Tab/Data Definition Tab.R")
 source("./Scripts/Frontend/Data Visualization Tab/Data Visualization Tab.R")
+source("./Scripts/Frontend/Data Clear Tab/Data Clear Tab.R")
 
 ui <- fluidPage(
   # Set the App Title
@@ -13,7 +14,8 @@ ui <- fluidPage(
     type = "tabs",
     dataUploadTab,
     dataDefineTab,
-    dataVisualizeTab
+    dataVisualizeTab,
+    dataClearTab
   )
   
 )

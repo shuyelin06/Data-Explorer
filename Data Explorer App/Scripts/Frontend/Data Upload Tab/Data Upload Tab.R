@@ -1,6 +1,6 @@
 # Import the sub-panels for the tab
 
-source("./Scripts/Frontend/Data Upload Tab/Upload DBF.R")
+source("./Scripts/Frontend/Data Upload Tab/Upload ShapeFile.R")
 
 dataUploadTab <- tabPanel(
   # Title of Tab 
@@ -10,6 +10,6 @@ dataUploadTab <- tabPanel(
   titlePanel("Upload Data"),
   
   navlistPanel(
-    dbfUploadNav
+    sfUploadNav
   )
 )

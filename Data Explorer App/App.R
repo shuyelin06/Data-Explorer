@@ -1,5 +1,6 @@
 # Loading the Shiny Package
 # Functions: https://shiny.rstudio.com/reference/shiny/1.6.0/
+# rm(list = setdiff(ls(), lsf.str()))
 library(shiny)
 
 # Changing File Upload Size to a100 MB max
