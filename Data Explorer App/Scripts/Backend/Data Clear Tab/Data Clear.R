@@ -20,3 +20,7 @@ observeEvent(input$clearSeasonDefButton, {
   print("Season Definitions Cleared")
 })
 
+
+# Clear the TIF Files
+
+

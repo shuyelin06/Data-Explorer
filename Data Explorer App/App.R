@@ -10,8 +10,11 @@ library(shiny)
 # This could later be all held in some settings file for accessibility and viewability
 # ---
 
-# Path for the Migration Data ShapeFile (where data will be saved)
+# Path for the Migration Data ShapeFile (where migration data is saved)
 dataFilePath <<- "./Data/Migration Data"
+
+# Path for the TIF Raster Layers (where Elevation, Foraging, and Other Values are saved)
+rasterLayerPath <<- "./Data/Raster Layers"
 
 # Path of Season Definitions Data
 bioYearPath <<- "./Data/Settings/Biological Year.csv"

@@ -1,5 +1,5 @@
 source("./Scripts/Frontend/Data Definition Tab/Parameter Tab.R")
-source("./Scripts/Frontend/Data Definition Tab/Grouping Tab.R")
+source("./Scripts/Frontend/Data Definition Tab/Select Tab.R")
 
 dataDefineTab <- tabPanel(
   title = "Define Data",
@@ -9,6 +9,6 @@ dataDefineTab <- tabPanel(
   
   navlistPanel(
     paramNav,
-    groupingNav
+    dataSelectNav
   )
 )
