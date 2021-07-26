@@ -7,6 +7,8 @@ dataVisualizeTab <- tabPanel(
   titlePanel("Visualize Data"),
   
   navlistPanel(
-    plotDataNav
+    plotDataNav,
+    
+    id = "dataVisualizeTabs"
   )
 )

@@ -19,6 +19,9 @@ rasterLayerPath <<- "./Data/Raster Layers"
 # Path of Season Definitions Data
 bioYearPath <<- "./Data/Settings/Biological Year.csv"
 
+# Migration Data Global Variable
+migrationData <<- NA
+
 # Month Names Global Variable
 monthNames <<- data.frame(month = 1:12, name = c(
   "January", 

@@ -12,10 +12,13 @@ ui <- fluidPage(
   
   tabsetPanel(
     type = "tabs",
+    
     dataUploadTab,
     dataDefineTab,
     dataVisualizeTab,
-    dataClearTab
+    dataClearTab,
+    
+    id = "dataTabs"
   )
   
 )

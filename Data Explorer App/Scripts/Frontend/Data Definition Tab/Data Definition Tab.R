@@ -9,6 +9,8 @@ dataDefineTab <- tabPanel(
   
   navlistPanel(
     paramNav,
-    dataSelectNav
+    dataSelectNav,
+    
+    id = "dataDefineTab"
   )
 )
