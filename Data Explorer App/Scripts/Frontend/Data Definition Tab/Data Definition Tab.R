@@ -1,5 +1,5 @@
-source("./Scripts/Frontend/Data Definition Tab/Parameter Tab.R")
-source("./Scripts/Frontend/Data Definition Tab/Select Tab.R")
+source("./Scripts/Frontend/Data Definition Tab/Parameter Tab.R", local = TRUE)
+source("./Scripts/Frontend/Data Definition Tab/Select Tab.R", local = TRUE)
 
 dataDefineTab <- tabPanel(
   title = "Define Data",

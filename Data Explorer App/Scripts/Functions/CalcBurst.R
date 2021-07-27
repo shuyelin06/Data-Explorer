@@ -30,7 +30,7 @@ CalcBurst <- function(data = data, id = TRUE, id_name="id", date_name="date", Tm
   key2 <- key[order(data[,id_name], data[,date_name])]
   if(all(key==key2)==FALSE) stop(print("Your data are not ordered correctly"))
   rm(key, key2)
-  if(any(duplicated(data[,c(id_name, date_name)])) == TRUE) 
+  if(any(duplicated(data[,c(id_name, date_name)])) == TRUE)
     stop("You have duplicates in your database")
   if(any(is.na(data[,date_name]) == TRUE)) 
     stop ("You have NAs in your date column")

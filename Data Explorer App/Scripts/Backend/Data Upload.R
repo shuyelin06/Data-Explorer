@@ -1,18 +1,20 @@
 # ---
-# Server Code for the Shape File Upload
+# Server Code for the Data Upload Tab Changes
 # ---
-library(sf)
-library(dplyr)
-library(circular)
 
-source("./Scripts/Functions/CalcBurst.R")
-source("./Scripts/Functions/CalcMovParams.R")
 
-# Event occurs when the submit button in the ShapeFile tab is pressed
+# ---
+# Server Code for the Shape File Upload
+
+# Code runs when the submit button in the ShapeFile tab is pressed
+# ---
 observeEvent(input$sfSubmitButton, {
   # ---
   # Validation: Checking that all necessary fields are filled
   # ---
+  
+  
+  # ---- End of Validation ----
   
   
   # ---
@@ -39,31 +41,39 @@ observeEvent(input$sfSubmitButton, {
   rm(filemap)
   
   
-  # Extracting the ID column name
-  idCol <- input$sfIdInput
-  
-  # Extracting the Date column name
-  dateCol <- input$sfDateInput
-  
-  
   print("ShapeFile Upload: Data Extraction Complete")
+  # ---- End of Data Extraction ----
+  
   
   # ---
   # Manipulating Data: Altering the Data so it Meets Criteria for Saving 
   # ---
   
   # Reading the csv file where the previous information is stored
-  existingData <- st_read(dataFilePath)
+  existingData <- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
   
-  # Checking if the animals are unique or not. 
-  # If the animals are unique, we change the IDs of the animals whose IDs conflict with preexisting animals
-  if(input$sfUniqueCheck == TRUE & nrow(existingData) != 0){
+  
+  # Changing column names to match that of existing data
+  columnNames <- colnames(uploadData)
+  
+  indices <- match(c(input$sfIdInput, input$sfDateInput), columnNames)
+  columnNames[indices[1]] <- "id" # Changing ID column name to "id"
+  columnNames[indices[2]] <- "date" # Changing date column name to "date"
+  
+  colnames(uploadData) <- columnNames
+  
+  rm(columnNames)
+  rm(indices)
+  
+  
+  # Checking if the animals are unique or not; if they are, change conflicting IDs with preexisting animals
+  if(nrow(existingData) != 0 & input$sfUniqueCheck == TRUE){
     print("ShapeFile Upload: Upload Data is Unique")
     
     # Get the IDs in both data sets
     existingIDs <- unique(existingData$id)
     
-    uploadedIDs <- unique(uploadData[[idCol]])
+    uploadedIDs <- unique(uploadData$id)
     
     # Find the IDs in the uploaded data that conflict
     conflictIndices <- match(existingIDs, uploadedIDs)
@@ -73,73 +83,79 @@ observeEvent(input$sfSubmitButton, {
     for(i in conflictIndices){
       ID <- uploadedIDs[i]
       
-      uploadData[uploadData[[idCol]] == ID, idCol] <- as.character(newID)
+      uploadData$id[uploadData$id == ID] <- as.character(newID)
       
       newID <- newID + 1
     }
+    
+    rm(existingIDs)
+    rm(uploadedIDs)
+    rm(conflictIndices)
+    rm(ID)
+    rm(newID)
   }
   
-  # Converting Date Column to POSIXct format
-  uploadData[[dateCol]] <- as.POSIXct(uploadData[[dateCol]], format = "%Y-%m-%d %H:%M:%S")
-  
-  
-  # Removing all rows with NA values
-  uploadData <- na.omit(uploadData)
-  
-  # Ordering by ID and Date
-  uploadData <- uploadData[order(uploadData[[idCol]], uploadData[[dateCol]]),]
-  
-  # Removing duplicate values using the Dplyr distinct function
-  uploadData <- dplyr::distinct(uploadData)
-  
-  
-  # Calculating Movement Parameters - Adding Bursts
-  uploadData$burst <- CalcBurst(data = uploadData, id_name = idCol, date_name = dateCol, Tmax = 3600 * 7)
   
   # Calculating Movement Parameters
-  uploadData <- CalcMovParams(data = uploadData, id_name = idCol, date_name = dateCol)
+  uploadData$date <- as.POSIXct(uploadData$date, format = "%Y-%m-%d %H:%M:%S") # Converting Date Column to POSIXct format
+  
+  uploadData <- na.omit(uploadData) # Removing all rows with NA values
+ 
+  uploadData <- dplyr::distinct(uploadData, id, date, .keep_all = TRUE) # Removing duplicate values
   
   
-  # Converting date column back to characters
-  uploadData[[dateCol]] <- as.character(uploadData[[dateCol]])
+  uploadData <- uploadData[order(uploadData$id, uploadData$date),] # Ordering by ID and Date
+
+  uploadData$burst <- CalcBurst(data = uploadData) # Adding Bursts
+  
+  uploadData <- CalcMovParams(data = uploadData) # Calculating Parameters
+  
   
   print("ShapeFile Upload: Data Manipulation (Movement Parameters) Complete")
+  # ---- End of Data Manipulation ----
+  
   
   # ---
-  # Combining with the Preexisting data
+  # Data Saving
   # ---
   
-  # Editing column names to match that of existing data
+  # Converting date column back to characters
+  uploadData$date <- as.character(uploadData$date)
+  
+  # Matching column names with that of existing data
   columnNames <- colnames(uploadData)
   
-  indices <- match(c(idCol, dateCol, "abs.angle", "rel.angle"), columnNames)
-  columnNames[indices[1]] <- "id" # Changing ID column name to "id"
-  columnNames[indices[2]] <- "date" # Changing date column name to "date"
-  columnNames[indices[3]] <- "abs_angle"
-  columnNames[indices[4]] <- "rel_angle"
+  indices <- match(c("abs.angle", "rel.angle"), columnNames)
+  columnNames[indices[1]] <- "abs_angle" # Changing name of abs.angle column
+  columnNames[indices[2]] <- "rel_angle" # Changing name of rel.angle column
   
   colnames(uploadData) <- columnNames
   
-  # Reordering Columns to match that of existing data
+  rm(columnNames)
+  rm(indices)
+  
+  # Reordering columns to match that of existing data
   uploadData <- dplyr::select(uploadData, colnames(existingData))
   
   # Combining with preexisting data
   data <- rbind(existingData, uploadData)
   
-  # Sorting the data by ID and Date
+  rm(uploadData)
+  rm(existingData)
+  
+  # Sorting ID and Date
   data <- data[order(data$id, data$date),]
   
   # Overwriting the data file
-  st_write(data, dsn = dataFilePath, driver = "ESRI Shapefile", append = FALSE, delete_layer = TRUE)
+  st_write(data, dsn = paste(files$migrationData[3], files$migrationData[2], sep = "/"), driver = "ESRI Shapefile", append = FALSE, delete_layer = TRUE)
   
   print("ShapeFile Upload: Data Saving Successful")
+  # ---- End of Data Saving ----
 })
 
 # ---
 # Server Code for the TIF File Upload
 # ---
-library(dplyr)
-library(raster)
 
 observeEvent(input$tifSubmitButton, {
   # ---
@@ -199,10 +215,10 @@ observeEvent(input$tifSubmitButton, {
   colnames(layerInformation) <- c("File.Name", "Data.Type", "Start.Date", "End.Date")
   
   # Saving the information to a .csv file
-  existingData <- read.csv(paste(rasterLayerPath, "Layers.csv", sep = "/"))
+  existingData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   write.csv(rbind(existingData,layerInformation), 
-            file = paste(rasterLayerPath, "Layers.csv", sep = "/"), 
+            file = paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"), 
             append = TRUE,
             row.names = FALSE)
   
@@ -212,7 +228,7 @@ observeEvent(input$tifSubmitButton, {
   # Saving the .tif File
   # ---
   
-  raster::writeRaster(layer, paste(rasterLayerPath, fileName, sep = "/"))
+  raster::writeRaster(layer, paste(files$rasterLayers[3], fileName, sep = "/"))
   
   print("TIF Upload: Raster Layer Saved")
 })

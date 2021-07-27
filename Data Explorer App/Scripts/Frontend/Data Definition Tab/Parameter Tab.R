@@ -14,7 +14,7 @@ paramNav <- tabPanel(
       inputSelected <- "Click Here to Choose..."
       
       # Checking if there are already settings saved for the biological year
-      bioYear <- read.csv(bioYearPath)
+      bioYear <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/"))
       if(nrow(bioYear) == 12){
         inputSelected <- bioYear$month[1]
       }

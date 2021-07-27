@@ -11,7 +11,7 @@ observeEvent(input$dataDefineTab, {
     output$selectAddData <- renderUI(
       {
         # Retrieve all of the different data types contained in the raster layers
-        dataFrame <- read.csv(paste(rasterLayerPath, "Layers.csv", sep = "/"))
+        dataFrame <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
         
         dataTypes <- unique(dataFrame$Data.Type)
         
@@ -49,7 +49,7 @@ observeEvent(input$biologicalYearSelect, {
       biologicalYear <- append(monthNames$name[match(startMonth, monthNames$name): 12], monthNames$name[1: match(startMonth, monthNames$name)-1])
       
       # Extracting preexisting biological year data
-      savedBioYearData <- read.csv(bioYearPath)
+      savedBioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/"))
       
       # Creating inputs
       for(month in biologicalYear){
@@ -121,7 +121,7 @@ observeEvent(input$seasonSave, {
   
   colnames(seasonDefinitions) <- c("number", "month", "season")
   
-  write.csv(seasonDefinitions, file = bioYearPath, row.names = FALSE)
+  write.csv(seasonDefinitions, file = paste(files$bioYear[3], files$bioYear[2], sep = "/"), row.names = FALSE)
   
   print("Defining Biological Year: Biological Year Saved")
 })
@@ -133,12 +133,6 @@ observeEvent(input$seasonSave, {
 # This tab will be where we load the data with additional raster layer information of what we might want.
 # Since there may be multiple datatypes uploaded, selecting a few can reduce the amount of time it takes to load the data for plotting
 # ---
-
-library(sf)
-
-library(raster)
-library(dplyr)
-
 observeEvent(input$selectDataRetrieve, {
   # Not Tested Yet
   
@@ -153,7 +147,7 @@ observeEvent(input$selectDataRetrieve, {
   migrationData <- st_read(dataFilePath)
   
   # Import Additional Information (TIF Files)
-  layerData <- read.csv(paste(rasterLayerPath, "Layers.csv", sep = "/"))
+  layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   
   # ---
@@ -164,7 +158,13 @@ observeEvent(input$selectDataRetrieve, {
   migrationData$id <- as.numeric(migrationData$id)
   
   # Converting Date Column to POSIXct
-  migrationData$date <- as.POSIXct(migrationData$date, format = "%Y-%m-%d %H:%M:%S")
+  migrationData$date <- as.POSIXct(migrationData$date, tryFormats = c(
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d",
+    
+    "%Y/%m/%d %H:%M:%S",
+    "%Y/%m/%d"
+  ))
   
   # Removing Burst, DT and StepFlag columns (don't think they'll be used in plotting)
   migrationData <- dplyr::select(migrationData, id, date, dist, speed, abs_angle,rel_angle, geometry)
@@ -182,7 +182,7 @@ observeEvent(input$selectDataRetrieve, {
     
     # Extract the data for all files with this data type
     for(dataRow in layerData$`Data Type` == dataType){
-      rasterLayer <- raster(paste("./Data/Raster Layers", dataRow$File.Name, sep = "/"))
+      rasterLayer <- raster(paste(files$rasterLayers[3], dataRow$File.Name, sep = "/"))
       
       # If there are no date ranges, extract all values associated with the geometries
       if(is.na(dataRow$Start.Date) | is.na(dataRow$End.Date)){

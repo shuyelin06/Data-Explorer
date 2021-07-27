@@ -1,0 +1,12 @@
+Things to Do for Shiny App:
+
+Data Upload:
+> Make the checkboxes for the .tif upload tab dynamic (after entering in a data type, it will display in the checkbox to ensure consistency)
+
+
+Data Define: 
+> Make the data retrieve function work (with raster layers) - Make sure you rm the rasterLayers after to not take up too much memory
+
+
+Data Visual:
+> Figure out what to display
