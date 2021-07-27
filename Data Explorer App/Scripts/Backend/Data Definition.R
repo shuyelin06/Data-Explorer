@@ -134,75 +134,100 @@ observeEvent(input$seasonSave, {
 # Since there may be multiple datatypes uploaded, selecting a few can reduce the amount of time it takes to load the data for plotting
 # ---
 observeEvent(input$selectDataRetrieve, {
-  # Not Tested Yet
+  time <- Sys.time()
   
-  # Retrieving the Selected Data that the User Wants
+  # Retrieving the TIF Data that the User Wants
   requestedData <- input$selectTIFinfo
+  
   
   # --- 
   # Importing Data
   # ---
+  print("Data Select: Importing Data")
   
   # Import Migration Data
-  migrationData <- st_read(dataFilePath)
+  migrationData <<- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
   
-  # Import Additional Information (TIF Files)
+  # Import TIF File Information
   layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
+  print("Data Select: Finished Importing Data")
   
+    
   # ---
   # Formatting Migration Data
   # ---
+  print("Data Select: Formatting Migration Data")
   
   # Converting ID Column to Numeric
-  migrationData$id <- as.numeric(migrationData$id)
+  migrationData$id <<- as.numeric(migrationData$id)
   
   # Converting Date Column to POSIXct
-  migrationData$date <- as.POSIXct(migrationData$date, tryFormats = c(
-    "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%d",
-    
-    "%Y/%m/%d %H:%M:%S",
-    "%Y/%m/%d"
-  ))
+  migrationData$date <<- as.POSIXct(migrationData$date, format = "%Y-%m-%d %H:%M:%S")
   
-  # Removing Burst, DT and StepFlag columns (don't think they'll be used in plotting)
-  migrationData <- dplyr::select(migrationData, id, date, dist, speed, abs_angle,rel_angle, geometry)
+  # Removing Burst, DT and StepFlag columns (I don't think they'll be important in plotting)
+  migrationData <<- dplyr::select(migrationData, id, date, dist, speed, abs_angle, rel_angle, geometry)
+  
+  print("Data Select: Finished Formatting Migration Data")
   
   
   # ---
-  # Adding Information from TIF Files
+  # Adding Information from Selected TIF Files
   # --- 
+  print("Data Select: Adding TIF File Information")
   
-  for(dataType in dplyr::distinct(layerData$`Data Type`)){
+  for(dataType in requestedData){
     print(paste("Extracting Values for", dataType))
     
     # Adding a new blank column for the data type
-    migrationData[[dataType]] <- vector(mode = "numeric", length = nrow(migrationData))
+    migrationData[[dataType]] <<- vector(mode = "numeric", length = nrow(migrationData))
     
-    # Extract the data for all files with this data type
-    for(dataRow in layerData$`Data Type` == dataType){
-      rasterLayer <- raster(paste(files$rasterLayers[3], dataRow$File.Name, sep = "/"))
+    # Iterating through every row with the given data type
+    rows <- layerData[layerData$Data.Type == dataType,]
+    for(row in 1:nrow(rows)){
       
-      # If there are no date ranges, extract all values associated with the geometries
-      if(is.na(dataRow$Start.Date) | is.na(dataRow$End.Date)){
-        migrationData[[dataType]] <- raster::extract(rasterLayer, as_Spatial(migrationData$geometry))
-      } 
-      # If there are date ranges, extract values associated with the geometries which are within the date range
-      else {
-        startDate <- as.POSIXct(dataRow$Start.Date)
-        endDate <- as.POSIXct(dataRow$End.Date)
+      print(rows[row, "File.Name"])
+      # Creating Raster Layer
+      rasterLayer <- raster(paste(files$rasterLayers[3], rows[row, "File.Name"], sep = "/"))
+      
+      # Taking the Migration Data's geometry and converting it to Spatial Points (with the crs of the raster layer)
+      geometry <- spTransform(as_Spatial(migrationData$geometry), crs(rasterLayer))
+      
+      # Tells us which rows to extract from geometry and edit on the migration data frame (so if there are multiple raster layers with different extents, we don't overwrite data from other layers)
+      noValue <- is.na(migrationData[[dataType]]) | (migrationData[[dataType]] == 0) 
+      
+      if(is.na(rows[row,"Start.Date"]) | is.na(rows[row,"End.Date"])){
+        migrationData[[dataType]][noValue] <<- raster::extract(rasterLayer, geometry[noValue])
+      } else {
+        startDate <- as.POSIXct(rows[row, "Start.Date"], format = "%Y-%m-%d")
+        endDate <- as.POSIXct(rows[row, "End.Date"], format = "%Y-%m-%d")
         
-        migrationData[[dataType]][migrationData$date > startDate & migrationData$date < endDate] <- raster::extract(rasterLayer, as_Spatial(migrationData$geometry[migrationData$date > startDate & migrationData$date < endDate]))
+        withinDates <- migrationData$date > startDate & migrationData$date < endDate
+        rm(startDate)
+        rm(endDate)
+        
+        migrationData[[dataType]][noValue & withinDates] <<- raster::extract(rasterLayer, geometry[noValue & withinDates])
       }
+      
+      rm(rasterLayer)
+      rm(geometry)
+      rm(selectRows)
     }
+    rm(rows)
+    
+    # Fill in all NA values (meaning no data was found for these points) with 0
+    migrationData[[dataType]][is.na(migrationData[[dataType]])] <<- 0
+    
+    print(paste("Finished Extracting Values for", dataType))
   }
+  rm(dataType)
+  rm(layerData)
+  
+  print("Data Select: Finished Adding TIF File Information")
   
   # -- 
   # Exporting Data
   # --
-  View(migrationData)
-  
-  
-  
+  print("Data Select: Finished")
+  print(paste("Data Select: Took", Sys.time() - time, "seconds"))
 })

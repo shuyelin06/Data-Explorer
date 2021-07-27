@@ -37,5 +37,10 @@ plotDataNav <- tabPanel(
       "Absolute Angle",
       "Relative Angle"
     )
+  ),
+  
+  actionButton(
+    inputId = "dataPlotButton",
+    label = "Plot Data"
   )
 )

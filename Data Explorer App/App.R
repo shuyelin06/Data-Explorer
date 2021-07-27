@@ -16,7 +16,7 @@ library(sf) # Loading the sf package
 
 source("./Scripts/Functions/CalcBurst.R") # Loading the CalcBurst custom function created by Dr. Merkle
 source("./Scripts/Functions/CalcMovParams.R") # Loading the CalcMovParams custom function created by Dr. Merkle
-library(circular) # Loading the ciruclar package needed for the custom functions
+library(circular) # Loading the circular package needed for the custom functions
 
 
 # Defining global variables (will be used throughout the app)
@@ -41,7 +41,7 @@ monthNames <- data.frame(month = 1:12, name = c( # Contains the months in the ye
 
 
 # Application Set-Up 
-options(shiny.maxRequestSize = 100 * 1024^2) # Changing File Upload Size to a 100 MB max
+options(shiny.maxRequestSize = 500 * 1024^2) # Changing File Upload Size to 500 MB max
 
 source("./Scripts/Frontend/User Interface.R", local = TRUE) # Importing the User Interface Main File (Frontend)
 

@@ -146,7 +146,7 @@ observeEvent(input$sfSubmitButton, {
 
 
 # ---
-# Server Code for the TIF File Upload
+# Server Code for the TIF File Upload (Small Files)
 # ---
 observeEvent(input$tifSubmitButton, {
   # ---
@@ -156,16 +156,13 @@ observeEvent(input$tifSubmitButton, {
   
   print("TIF Upload: Validation Complete")
   
+  
   # ---
-  # Extracting Information About the .tif File
+  # Extracting Information
   # ---
   
   # Create a Raster Layer from the Data
   layer <- raster(input$tifFileUpload$datapath)
-  
-  # The rasterlayer information will later be saved to a .csv file later for convenience 
-  # The dataframe will contain information: File Name, Information, Start Date, End Date
-  layerInformation <- data.frame(matrix(ncol = 4, nrow = 1))
   
   # Extracting the Type of Data the .tif File Contains
   dataType <- input$tifFilePurpose
@@ -184,23 +181,43 @@ observeEvent(input$tifSubmitButton, {
   # Generating the Name of the File
   fileName <- paste(paste(dataType, as.numeric(startDate), as.numeric(endDate), sep = "-"), ".tif", sep = "")
   
-  print("TIF Upload: Information Extraction and Generation Complete")
+  print("TIF Upload: Information Extracted")
   
+  
+  # --- 
+  # Saving the Layer
+  # --- 
+  
+  # Saving the Layer
+  raster::writeRaster(layer, paste(files$rasterLayers[3], fileName, sep = "/"))
+  
+  rm(layer)
+  
+  print("TIF Upload: Layer Saved")
+  
+  # --- 
+  # Recording Information About the Layer
   # ---
-  # Setting and Saving Information About the .tif File
-  # ---
+  
+  # The rasterlayer information will later be saved to a .csv file later for convenience 
+  # The dataframe will contain information: File Name, Information, Start Date, End Date
+  layerInformation <- data.frame(matrix(ncol = 4, nrow = 1))
   
   # Setting the file name
   layerInformation[1,1] <- fileName
+  rm(fileName)
   
   # Setting the information type
   layerInformation[1,2] <- dataType
+  rm(dataType)
   
   # Setting the start date
   layerInformation[1,3] <- as.character(startDate)
+  rm(startDate)
   
   # Setting the end date
   layerInformation[1,4] <- as.character(endDate)
+  rm(endDate)
   
   # Setting column names
   colnames(layerInformation) <- c("File.Name", "Data.Type", "Start.Date", "End.Date")
@@ -211,14 +228,12 @@ observeEvent(input$tifSubmitButton, {
   write.csv(rbind(existingData,layerInformation), 
             file = paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"),
             row.names = FALSE)
+  rm(layerInformation, existingData)
   
-  print("TIF Upload: File Information Recorded")
-  
-  # ---
-  # Saving the .tif File
-  # ---
-  
-  raster::writeRaster(layer, paste(files$rasterLayers[3], fileName, sep = "/"))
-  
-  print("TIF Upload: Raster Layer Saved")
+  print("TIF Upload: Layer Information Recorded")
 })
+
+
+# ---  
+# Server Code for the TIF File Upload (Large Files)
+# ---
