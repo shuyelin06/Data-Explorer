@@ -1,31 +1,30 @@
-# Loading the Shiny Package
-# Functions: https://shiny.rstudio.com/reference/shiny/1.6.0/
-# rm(list = setdiff(ls(), lsf.str()))
-library(shiny)
+# Shiny Documentation: https://shiny.rstudio.com/reference/shiny/1.6.0/
+# Remove All Variables: rm(list = ls(all = TRUE))
 
-library(dplyr)
-library(raster)
-library(sf)
+# Checking that the user has the required packages installed
+if(any(c("circular", "sf", "raster", "dplyr", "shiny") %in% installed.packages()[,1] == FALSE)){
+  stop("You must install the following packages: circular, sf, raster, dplyr, shiny")
+}
 
-source("./Scripts/Functions/CalcBurst.R")
-source("./Scripts/Functions/CalcMovParams.R")
-library(circular)
 
-# ---
-# Variable Definitions
+# Loading Packages
+library(shiny) # Loading the Shiny Package
 
-# Defining global variables that many scripts use, including file paths. 
-# This could later be all held in some settings file for accessibility and viewability
-# ---
+library(dplyr) # Loading the dplyr package
+library(raster) # Loading the raster package
+library(sf) # Loading the sf package
 
-# Loading the File Paths in
-files <- read.csv("./Data/Settings/Files.csv")
+source("./Scripts/Functions/CalcBurst.R") # Loading the CalcBurst custom function created by Dr. Merkle
+source("./Scripts/Functions/CalcMovParams.R") # Loading the CalcMovParams custom function created by Dr. Merkle
+library(circular) # Loading the ciruclar package needed for the custom functions
 
-# Migration Data Global Variable
-migrationData <- NA
 
-# Month Names Global Variable
-monthNames <- data.frame(month = 1:12, name = c(
+# Defining global variables (will be used throughout the app)
+files <- read.csv("./Data/Settings/Files.csv") # Contains the various different file paths
+
+migrationData <- NA # Will contain the saved migration data
+
+monthNames <- data.frame(month = 1:12, name = c( # Contains the months in the year and their names
   "January", 
   "February", 
   "March", 
@@ -40,20 +39,13 @@ monthNames <- data.frame(month = 1:12, name = c(
   "December"
 ))
 
-# --- 
+
 # Application Set-Up 
+options(shiny.maxRequestSize = 100 * 1024^2) # Changing File Upload Size to a 100 MB max
 
-# Setting up the application and its settings
-# ---
+source("./Scripts/Frontend/User Interface.R", local = TRUE) # Importing the User Interface Main File (Frontend)
 
-# Changing File Upload Size to a100 MB max
-options(shiny.maxRequestSize = 100 * 1024^2)
-
-# Importing the User Interface Main File (Frontend)
-source("./Scripts/Frontend/User Interface.R", local = TRUE)
-
-# Importing the Server Code Main File (Backend)
-source("./Scripts/Backend/Server.R", local = TRUE)
+source("./Scripts/Backend/Server.R", local = TRUE) # Importing the Server Code Main File (Backend)
 
 
 # Running the Shiny App

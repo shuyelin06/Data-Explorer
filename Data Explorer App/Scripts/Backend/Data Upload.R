@@ -36,9 +36,7 @@ observeEvent(input$sfSubmitButton, {
   
   uploadData <- st_read(paste(uploadDirec, filemap$name[grep(pattern = "*.shp$", filemap$name)], sep = "/"))
   
-  rm(previousDirec)
-  rm(uploadDirec)
-  rm(filemap)
+  rm(filemap, previousDirec, uploadDirec)
   
   
   print("ShapeFile Upload: Data Extraction Complete")
@@ -62,8 +60,7 @@ observeEvent(input$sfSubmitButton, {
   
   colnames(uploadData) <- columnNames
   
-  rm(columnNames)
-  rm(indices)
+  rm(columnNames, indices)
   
   
   # Checking if the animals are unique or not; if they are, change conflicting IDs with preexisting animals
@@ -88,11 +85,7 @@ observeEvent(input$sfSubmitButton, {
       newID <- newID + 1
     }
     
-    rm(existingIDs)
-    rm(uploadedIDs)
-    rm(conflictIndices)
-    rm(ID)
-    rm(newID)
+    rm(existingIDs, uploadedIDs, conflictIndices, ID, newID)
   }
   
   
@@ -131,8 +124,7 @@ observeEvent(input$sfSubmitButton, {
   
   colnames(uploadData) <- columnNames
   
-  rm(columnNames)
-  rm(indices)
+  rm(columnNames, indices)
   
   # Reordering columns to match that of existing data
   uploadData <- dplyr::select(uploadData, colnames(existingData))
@@ -140,8 +132,7 @@ observeEvent(input$sfSubmitButton, {
   # Combining with preexisting data
   data <- rbind(existingData, uploadData)
   
-  rm(uploadData)
-  rm(existingData)
+  rm(uploadData, existingData)
   
   # Sorting ID and Date
   data <- data[order(data$id, data$date),]
@@ -153,10 +144,10 @@ observeEvent(input$sfSubmitButton, {
   # ---- End of Data Saving ----
 })
 
+
 # ---
 # Server Code for the TIF File Upload
 # ---
-
 observeEvent(input$tifSubmitButton, {
   # ---
   # Validation
@@ -218,8 +209,7 @@ observeEvent(input$tifSubmitButton, {
   existingData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   write.csv(rbind(existingData,layerInformation), 
-            file = paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"), 
-            append = TRUE,
+            file = paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"),
             row.names = FALSE)
   
   print("TIF Upload: File Information Recorded")
