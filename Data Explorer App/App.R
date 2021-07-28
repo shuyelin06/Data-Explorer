@@ -8,15 +8,15 @@ if(any(c("circular", "sf", "raster", "dplyr", "shiny") %in% installed.packages()
 
 
 # Loading Packages
-library(shiny) # Loading the Shiny Package
-
-library(dplyr) # Loading the dplyr package
-library(raster) # Loading the raster package
-library(sf) # Loading the sf package
+require(shiny) # Loading the Shiny Package
+require(circular) # Loading the circular package needed for the custom functions
+require(dplyr) # Loading the dplyr package
+require(raster) # Loading the raster package
+require(sf) # Loading the sf package
 
 source("./Scripts/Functions/CalcBurst.R", local = TRUE) # Loading the CalcBurst custom function created by Dr. Merkle
 source("./Scripts/Functions/CalcMovParams.R", local = TRUE) # Loading the CalcMovParams custom function created by Dr. Merkle
-library(circular) # Loading the circular package needed for the custom functions
+
 
 
 # Defining global variables (will be used throughout the app)
