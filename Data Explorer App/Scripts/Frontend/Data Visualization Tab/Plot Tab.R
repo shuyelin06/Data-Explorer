@@ -6,7 +6,7 @@ plotDataNav <- tabPanel(
   titlePanel("Plot Time Series Data"),
   
   uiOutput(
-    
+    outputId = "timeSeriesGroupBy"
   ),
   
   radioButtons(
