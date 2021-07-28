@@ -1,9 +1,13 @@
 plotDataNav <- tabPanel(
   # Title of Tab 
-  title = "Data Plotting",
+  title = "Time Series",
   
   # UI Elements
-  titlePanel("Plot Data"),
+  titlePanel("Plot Time Series Data"),
+  
+  uiOutput(
+    
+  ),
   
   radioButtons(
     inputId = "dataPlotGrouping",
@@ -40,7 +44,7 @@ plotDataNav <- tabPanel(
   ),
   
   actionButton(
-    inputId = "dataPlotButton",
+    inputId = "timeSeriesButton",
     label = "Plot Data"
   )
 )
