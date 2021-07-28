@@ -134,30 +134,16 @@ observeEvent(input$seasonSave, {
 # Since there may be multiple datatypes uploaded, selecting a few can reduce the amount of time it takes to load the data for plotting
 # ---
 observeEvent(input$selectDataRetrieve, {
+  totalTime <- Sys.time() # Record time elapsed
+  
+  # ---
+  # Importing and Formatting Migration Data
+  # ---
   time <- Sys.time()
+  print("Data Select: Importing and Formatting Migration Data")
   
-  # Retrieving the TIF Data that the User Wants
-  requestedData <- input$selectTIFinfo
-  
-  
-  # --- 
-  # Importing Data
-  # ---
-  print("Data Select: Importing Data")
-  
-  # Import Migration Data
+  # Importing Migration Data
   migrationData <<- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
-  
-  # Import TIF File Information
-  layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
-  
-  print("Data Select: Finished Importing Data")
-  
-    
-  # ---
-  # Formatting Migration Data
-  # ---
-  print("Data Select: Formatting Migration Data")
   
   # Converting ID Column to Numeric
   migrationData$id <<- as.numeric(migrationData$id)
@@ -168,13 +154,90 @@ observeEvent(input$selectDataRetrieve, {
   # Removing Burst, DT and StepFlag columns (I don't think they'll be important in plotting)
   migrationData <<- dplyr::select(migrationData, id, date, dist, speed, abs_angle, rel_angle, geometry)
   
-  print("Data Select: Finished Formatting Migration Data")
+  print(paste("Data Select: Finished Formatting Migration Data", "-", Sys.time() - time, "seconds"))
   
+  
+  # ---
+  # Adding Biological Year and Seasons
+  # ---
+  time <- Sys.time()
+  print("Data Select: Adding Bio Year and Seasons")
+  
+  # Extracting information from the Biological Year.csv file
+  bioYearData <- read.csv("./Data/Settings/Biological Year.csv") # Importing information from the file
+  
+  
+  # Adding Seasons to the Migration Data
+  for(i in 1:nrow(bioYearData)){
+    # Obtaining the month
+    month <- base::as.character(bioYearData$number[i])
+    if(length(month) == 1){
+      month <- paste("0", month, sep = "") # Done to meet the format of the month when extracting it from POSIXct
+    }
+    
+    # Obtaining the associated season
+    season <- bioYearData$season[i]
+    
+    # Adding the seasons to the migration data 
+    migrationData$season[format(migrationData$date, "%m") == month] <<- season
+  }
+  rm(i, month, season) # Clearing unneeded variables from memory
+  
+  
+  # Adding Biological Year to the Migration Data
+  startMonth <- bioYearData$number[1] # Finding the start month to the biological year
+  rm(bioYearData) # Removing bioYearData (no longer needed)
+  
+  biologicalYear <- data.frame(matrix(ncol = 3, nrow = 0)) # Dataframe to be used in adding the bioYear column
+  
+  min <- min(migrationData$date) # Smallest POSIXct date in the data
+  max <- max(migrationData$date) # Largest POSIXct date in the data
+  
+  for(bioYear in seq(from = as.numeric(format(min, "%Y")) - 1, to = as.numeric(format(max, "%Y")) + 1)){
+    startDate <- NA
+    endDate <- NA
+    
+    # If start month is from Oct - Dec, the bioyear STARTS from the PREVIOUS year's Oct-Dec
+    if(10 <= startMonth & startMonth <= 12){
+      startDate <- as.POSIXct(paste(bioYear - 1, startMonth, 1, sep = "/"), format = "%Y/%m/%d")
+      endDate <- as.POSIXct(paste(bioYear, startMonth, 1, sep = "/"), format = "%Y/%m/%d") - 1
+    } 
+    # If the start month is from Jan - Sept, the bioyear ENDS on the NEXT year's Jan - Sept
+    else {
+      startDate <- as.POSIXct(paste(bioYear, startMonth, 1, sep = "/"), format = "%Y/%m/%d")
+      endDate <- as.POSIXct(paste(bioYear + 1, startMonth, 1, sep = "/"), format = "%Y/%m/%d") - 1
+    }
+    
+    # Adding to the biological year dataframe
+    biologicalYear <- rbind(biologicalYear, c(bioYear, startDate, endDate))
+  }
+  rm(min, max, bioYear, startMonth, startDate, endDate) # Removing unneeded variables from memory
+  
+  colnames(biologicalYear) <- c("bioYear", "start", "end") # Formatting the BioYear Data Frame
+  
+  for(i in 1:nrow(biologicalYear)){
+    withinYear <- biologicalYear$start[i] <= migrationData$date & migrationData$date <= biologicalYear$end[i]
+    
+    migrationData$bioYear[withinYear] <<- biologicalYear$bioYear[i]
+  }
+  rm(biologicalYear, i, withinYear) # Removing unneeded variables from memory
+  
+  # Moving bioYear and seasons to the front of the dataframe (as they're used for grouping)
+  migrationData <<- dplyr::select(migrationData, id, date, bioYear, season, dist, speed, abs_angle, rel_angle, geometry)
+  
+  print(paste("Data Select: Finished Adding Bio Year and Seasons", "-", Sys.time() - time, "seconds"))
   
   # ---
   # Adding Information from Selected TIF Files
   # --- 
+  time <- Sys.time()
   print("Data Select: Adding TIF File Information")
+  
+  # Retrieving the TIF Data that the User Wants
+  requestedData <- input$selectTIFinfo
+  
+  # Import TIF File Information
+  layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   for(dataType in requestedData){
     print(paste("Extracting Values for", dataType))
@@ -215,19 +278,16 @@ observeEvent(input$selectDataRetrieve, {
     }
     rm(rows)
     
-    # Fill in all NA values (meaning no data was found for these points) with 0
-    migrationData[[dataType]][is.na(migrationData[[dataType]])] <<- 0
-    
     print(paste("Finished Extracting Values for", dataType))
   }
-  rm(dataType)
-  rm(layerData)
+  rm(dataType, requestedData, layerData)
   
-  print("Data Select: Finished Adding TIF File Information")
+  print(paste("Data Select: Finished Adding TIF File Information", "-", Sys.time() - time, "seconds"))
+  rm(time)
   
   # -- 
   # Exporting Data
   # --
   print("Data Select: Finished")
-  print(paste("Data Select: Took", Sys.time() - time, "seconds"))
+  print(paste("Data Select: Took", Sys.time() - totalTime, "seconds"))
 })

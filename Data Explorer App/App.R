@@ -14,8 +14,8 @@ library(dplyr) # Loading the dplyr package
 library(raster) # Loading the raster package
 library(sf) # Loading the sf package
 
-source("./Scripts/Functions/CalcBurst.R") # Loading the CalcBurst custom function created by Dr. Merkle
-source("./Scripts/Functions/CalcMovParams.R") # Loading the CalcMovParams custom function created by Dr. Merkle
+source("./Scripts/Functions/CalcBurst.R", local = TRUE) # Loading the CalcBurst custom function created by Dr. Merkle
+source("./Scripts/Functions/CalcMovParams.R", local = TRUE) # Loading the CalcMovParams custom function created by Dr. Merkle
 library(circular) # Loading the circular package needed for the custom functions
 
 
