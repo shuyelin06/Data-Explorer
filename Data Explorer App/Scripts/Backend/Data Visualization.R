@@ -2,6 +2,6 @@ observeEvent(input$dataPlotDifferentiateIDs, {
   
 })
 
-observeEvent(input$dataPlotButton, {
+observeEvent(input$timeSeriesButton, {
   View(migrationData)
 })
