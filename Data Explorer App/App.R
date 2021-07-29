@@ -21,11 +21,8 @@ source("./Scripts/Functions/CalcBurst.R", local = TRUE) # Loading the CalcBurst 
 source("./Scripts/Functions/CalcMovParams.R", local = TRUE) # Loading the CalcMovParams custom function created by Dr. Merkle
 
 
-
 # Defining global variables (will be used throughout the app)
 files <- read.csv("./Data/Settings/Files.csv") # Contains the various different file paths
-
-migrationData <- NA # Will contain the saved migration data
 
 monthNames <- data.frame(month = 1:12, name = c( # Contains the months in the year and their names
   "January", 

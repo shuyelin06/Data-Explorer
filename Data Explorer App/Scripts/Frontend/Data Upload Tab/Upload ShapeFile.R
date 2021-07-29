@@ -33,13 +33,5 @@ sfUploadNav <- tabPanel(
   actionButton(
     inputId = "sfSubmit",
     label = "Upload Data"
-  ),
-  
-  br(),
-  br(),
-  
-  # Where console output messages are sent
-  textOutput(
-    outputId = "sfConsole"
   )
 )

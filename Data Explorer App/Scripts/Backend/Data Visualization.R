@@ -1,7 +1,7 @@
-observeEvent(input$dataPlotDifferentiateIDs, {
+observe({
+  data <- migrationData()
   
-})
-
-observeEvent(input$timeSeriesButton, {
-  View(migrationData)
+  if(!is.null(data)){
+    View(data)
+  }
 })
