@@ -1,46 +1,70 @@
 tifUploadNav <- tabPanel(
-  title = "Upload a TIF File",
+  title = "Upload a TIF or IMG File",
   
-  fileInput(
-    inputId = "tifFileUpload",
-    label = "Upload a TIF File",
+  shinyFilesButton(
+    id = "layerUpload",
+    label = "Find .tif or .img File",
+    title = "Select the .tif or .img File You Want to Import",
     multiple = FALSE,
-    accept = c('.tif')
   ),
+  textOutput(
+    outputId = "layerFileDisplay"
+  ),
+  
+  br(),
   
   radioButtons(
-    inputId = "tifFilePurpose",
+    inputId = "layerPurpose",
     label = "What Data Does this File Display?",
-    choices = c(
-      "Elevation",
-      "Foraging",
-      "Other"
-    )
+    choices = {
+      append(
+        unique(
+          read.csv(
+            paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/")
+          )$Data.Type
+        ), 
+        c("Other")
+      )
+    },
+    selected = character(0)
   ),
+  
   conditionalPanel(
-    condition = "input.tifFilePurpose == 'Other'",
+    condition = "input.layerPurpose == 'Other'",
     textInput(
-      inputId = "tifFilePurposeTextInput",
+      inputId = "layerPurposeText",
       label = "Please enter the purpose of the data here"
     )
   ),
   
+  br(),
+  
   checkboxInput(
-    inputId = "tifDateRangeCheck",
+    inputId = "layerDateRangeCheck",
     label = "Valid Under a Date Range?",
     value = FALSE
   ),
   conditionalPanel(
-    condition = "input.tifDateRangeCheck",
+    condition = "input.layerDateRangeCheck",
     dateRangeInput(
-      inputId = "tifDateRange",
+      inputId = "layerDateRange",
       label = "Enter the Date Range in which this TIF file is valid."
     )
   ),
   
+  br(),
+  
   actionButton(
-    inputId = "tifSubmitButton",
-    label = "Submit TIF File"
+    inputId = "layerSubmit",
+    label = "Import File"
+  ),
+  
+  br(),
+  br(),
+  
+  # Where console output messages are sent
+  textOutput(
+    outputId = "layerConsole"
   )
   
   
