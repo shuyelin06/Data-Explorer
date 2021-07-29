@@ -1,3 +1,4 @@
+# Recreating the File Settings File (if it got destroyed or corrupted)
 fileSettingPath = "./Data/Settings/Files.csv"
 
 

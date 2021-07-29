@@ -14,7 +14,7 @@ observe({
     input = input, 
     id = 'sfFileUpload',
     roots = root,
-    filetypes = c('dbf', 'prj', 'shp', 'shx'),
+    filetypes = c('shp'),
   )
   
 
@@ -25,6 +25,14 @@ observe({
     output$sfFileDisplay <- renderText(sfFilePath)
     
     shapeFileData <<- st_read(sfFilePath)
+    
+    # Checking if the file is a point file
+    if(!all(st_geometry_type(shapeFileData) == "POINT")){
+      stop("File is not a point file!") # Not tested yet
+    } else {
+      st_transform(shapeFileData, crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+      print(crs(shapeFileData))
+    }
     
     output$sfColSelect <- renderUI({
       columnNames <- colnames(shapeFileData)
