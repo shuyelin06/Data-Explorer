@@ -1,30 +1,45 @@
 sfUploadNav <- tabPanel(
   title = "Upload a Shape File", 
   
-  fileInput(
-    inputId = "sfFileUpload", 
-    label = "Upload Files",
-    multiple = TRUE,
-    accept = c('.dbf', '.shp', '.sbn', '.sbx', '.shx', '.prj')
+  # Select a .shp File
+  shinyFilesButton(
+    id = "sfFileUpload",
+    label = "Find .shp File",
+    title = "Select the .shp File You Want to Import",
+    multiple = FALSE,
+  ),
+  textOutput(
+    outputId = "sfFileDisplay"
   ),
   
-  textInput(
-    inputId = "sfIdInput",
-    label = "Name of ID Column"
+  uiOutput(
+    outputId = "sfColSelect"
   ),
   
-  textInput(
-    inputId = "sfDateInput",
-    label = "Name of Date Column"
+  br(),
+  
+  # Select Tmax
+  sliderInput(
+    inputId = "sfTmax",
+    label = "Select a Tmax for Bursts (in hours)",
+    min = 1,
+    max = 24,
+    value = 7
   ),
   
-  checkboxInput(
-    inputId = "sfUniqueCheck",
-    label = "Unique?",
-  ),
+  br(),
   
+  # Load Data
   actionButton(
-    inputId = "sfSubmitButton",
+    inputId = "sfSubmit",
     label = "Upload Data"
+  ),
+  
+  br(),
+  br(),
+  
+  # Where console output messages are sent
+  textOutput(
+    outputId = "sfConsole"
   )
 )

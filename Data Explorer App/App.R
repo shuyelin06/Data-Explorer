@@ -2,17 +2,20 @@
 # Remove All Variables: rm(list = ls(all = TRUE))
 
 # Checking that the user has the required packages installed
-if(any(c("circular", "sf", "raster", "dplyr", "shiny") %in% installed.packages()[,1] == FALSE)){
+if(any(c("circular", "sf", "raster", "dplyr", "shiny", "lubridate", "shinyFiles") %in% installed.packages()[,1] == FALSE)){
   stop("You must install the following packages: circular, sf, raster, dplyr, shiny")
 }
 
 
 # Loading Packages
-require(shiny) # Loading the Shiny Package
+require(shiny) # Loading the Shiny Package used to create the app
+
+require(shinyFiles) # Loading the shinyFiles package needed to access client-side files
 require(circular) # Loading the circular package needed for the custom functions
-require(dplyr) # Loading the dplyr package
-require(raster) # Loading the raster package
-require(sf) # Loading the sf package
+require(lubridate) # Loading the lubridate package used for dates
+require(dplyr) # Loading the dplyr package used for data manipulation
+require(raster) # Loading the raster package used for tif and img files
+require(sf) # Loading the sf package used for shapefiles
 
 source("./Scripts/Functions/CalcBurst.R", local = TRUE) # Loading the CalcBurst custom function created by Dr. Merkle
 source("./Scripts/Functions/CalcMovParams.R", local = TRUE) # Loading the CalcMovParams custom function created by Dr. Merkle

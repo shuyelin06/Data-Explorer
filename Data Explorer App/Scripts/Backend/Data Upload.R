@@ -1,211 +1,229 @@
-# ---
-# Server Code for the Data Upload Tab Changes
-# ---
-
+# Root directory for the file selects will begin from
+root <- c(Documents = path.expand("~"))
 
 # ---
 # Server Code for the Shape File Upload
-
-# Code runs when the submit button in the ShapeFile tab is pressed
 # ---
-observeEvent(input$sfSubmitButton, {
+
+shapeFileData <- NA
+
+# Select the .shp File and ID/Date Columns
+observe({
+  # Code for the ShapeFile Upload Button
+  shinyFileChoose(
+    input = input, 
+    id = 'sfFileUpload',
+    roots = root,
+    filetypes = c('dbf', 'prj', 'shp', 'shx'),
+  )
+  
+
+  sfFilePath <- parseFilePaths(root, input$sfFileUpload)$datapath
+  
+  # If there is a path, load the data
+  if(length(sfFilePath) != 0){
+    output$sfFileDisplay <- renderText(sfFilePath)
+    
+    shapeFileData <<- st_read(sfFilePath)
+    
+    output$sfColSelect <- renderUI({
+      columnNames <- colnames(shapeFileData)
+      
+      uiOutput <- tagList(titlePanel("Select ID and Date Column"))
+      
+      # Adding Radio Buttons for ID Column Select
+      uiOutput <- tagList(uiOutput, isolate(radioButtons(
+        inputId <- "sfIdCol",
+        label = "Select ID Column",
+        choices = columnNames,
+        selected = character(0)
+      )))
+      
+      # Adding Radio Buttons for Date Column Select
+      uiOutput <- tagList(uiOutput, isolate(radioButtons(
+        inputId <- "sfDateCol",
+        label = "Select Date Column",
+        choices = columnNames,
+        selected = character(0)
+      )))
+      
+    })
+    
+    output$sfConsole <- renderText("Data Successfully Uploaded!")
+  }
+
+
+})
+
+# Retrieve Other Information, Calculate Movement Parameters, and Save File
+observeEvent(input$sfSubmit, {
   # ---
   # Validation: Checking that all necessary fields are filled
   # ---
+  output$sfConsole <- renderText("Validating...")
+
+  # Commented out for now as validation is not working 
+  validate(
+    # Check that there is data loaded
+    need(shapeFileData, message = 'There is no ShapeFile Loaded'),
+    
+    # Check that the id/date columns are selected
+    need(input$sfIdCol, message = 'ID Column is empty'),
+    
+    need(input$sfDateCol, message = 'Date Column is empty')
+  )
   
+  output$sfConsole <- renderText("Validation Tests Passed")
   
   # ---- End of Validation ----
   
   
   # ---
-  # Extracting Information: Pulling the Information Uploaded
+  # Calculating Movement Parameters
   # ---
+  output$sfConsole <- renderText("Calculating Movement Parameters...")
   
-  # Extracting the data
-  filemap <- input$sfFileUpload
-  previousDirec <- getwd()
+  # Changing the id and date column names to "id" and "date", respectively (so I can use the dplyr::distinct function for id and date)
+  columnNames <- colnames(shapeFileData)
   
-  uploadDirec <- dirname(filemap$datapath[1])
-  setwd(uploadDirec)
-  
-  for(i in 1:nrow(filemap)){
-    file.rename(filemap$datapath[i], filemap$name[i])
-  }
-  
-  setwd(previousDirec)
-  
-  uploadData <- st_read(paste(uploadDirec, filemap$name[grep(pattern = "*.shp$", filemap$name)], sep = "/"))
-  
-  rm(filemap, previousDirec, uploadDirec)
-  
-  
-  print("ShapeFile Upload: Data Extraction Complete")
-  # ---- End of Data Extraction ----
-  
-  
-  # ---
-  # Manipulating Data: Altering the Data so it Meets Criteria for Saving 
-  # ---
-  
-  # Reading the csv file where the previous information is stored
-  existingData <- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
-  
-  
-  # Changing column names to match that of existing data
-  columnNames <- colnames(uploadData)
-  
-  indices <- match(c(input$sfIdInput, input$sfDateInput), columnNames)
+  indices <- match(c(input$sfIdCol, input$sfDateCol), columnNames)
   columnNames[indices[1]] <- "id" # Changing ID column name to "id"
   columnNames[indices[2]] <- "date" # Changing date column name to "date"
   
-  colnames(uploadData) <- columnNames
+  colnames(shapeFileData) <<- columnNames
   
   rm(columnNames, indices)
   
   
-  # Checking if the animals are unique or not; if they are, change conflicting IDs with preexisting animals
-  if(nrow(existingData) != 0 & input$sfUniqueCheck == TRUE){
-    print("ShapeFile Upload: Upload Data is Unique")
-    
-    # Get the IDs in both data sets
-    existingIDs <- unique(existingData$id)
-    
-    uploadedIDs <- unique(uploadData$id)
-    
-    # Find the IDs in the uploaded data that conflict
-    conflictIndices <- match(existingIDs, uploadedIDs)
-    
-    # Changing the ids of the animals to a unique one
-    newID <- max(as.numeric(existingIDs)) + 1
-    for(i in conflictIndices){
-      ID <- uploadedIDs[i]
-      
-      uploadData$id[uploadData$id == ID] <- as.character(newID)
-      
-      newID <- newID + 1
-    }
-    
-    rm(existingIDs, uploadedIDs, conflictIndices, ID, newID)
+  # Calculating Movement Parameters
+  shapeFileData$date <<- lubridate::ymd_hms(shapeFileData$date, 
+                                            quiet = TRUE,
+                                            truncated = 3
+                                            ) # Converting Date Column to POSIXct format
+  # ^ Currently, the timezone becomes UTC. I'm not sure if this will be an issue later?
+  # For some reason, trying to change the time zone causes the RStudio application to freeze. I'm not sure why.
+  
+  if(sum(is.na(shapeFileData)) > 0){
+    warning(paste(sum(is.na(shapeFileData)), "rows will be deleted because the date was not read in properly"))
   }
   
-  
-  # Calculating Movement Parameters
-  uploadData$date <- as.POSIXct(uploadData$date, format = "%Y-%m-%d %H:%M:%S") # Converting Date Column to POSIXct format
-  
-  uploadData <- na.omit(uploadData) # Removing all rows with NA values
+  shapeFileData <<- na.omit(shapeFileData) # Removing all rows with NA values
  
-  uploadData <- dplyr::distinct(uploadData, id, date, .keep_all = TRUE) # Removing duplicate values
+  shapeFileData <<- dplyr::distinct(shapeFileData, id, date, .keep_all = TRUE) # Removing duplicate values
   
   
-  uploadData <- uploadData[order(uploadData$id, uploadData$date),] # Ordering by ID and Date
+  shapeFileData <<- shapeFileData[order(shapeFileData$id, shapeFileData$date),] # Ordering by ID and Date
 
-  uploadData$burst <- CalcBurst(data = uploadData) # Adding Bursts
+  shapeFileData$burst <<- CalcBurst(data = shapeFileData, Tmax = 3600 * as.numeric(input$sfTmax)) # Adding Bursts
   
-  uploadData <- CalcMovParams(data = uploadData) # Calculating Parameters
+  shapeFileData <<- CalcMovParams(data = shapeFileData) # Calculating Parameters
   
   
-  print("ShapeFile Upload: Data Manipulation (Movement Parameters) Complete")
+  output$sfConsole <- renderText("Movement Parameters Calculated")
+
   # ---- End of Data Manipulation ----
   
   
   # ---
   # Data Saving
   # ---
+  output$sfConsole <- renderText("Saving Migration Data...")
   
   # Converting date column back to characters
-  uploadData$date <- as.character(uploadData$date)
-  
-  # Matching column names with that of existing data
-  columnNames <- colnames(uploadData)
-  
-  indices <- match(c("abs.angle", "rel.angle"), columnNames)
-  columnNames[indices[1]] <- "abs_angle" # Changing name of abs.angle column
-  columnNames[indices[2]] <- "rel_angle" # Changing name of rel.angle column
-  
-  colnames(uploadData) <- columnNames
-  
-  rm(columnNames, indices)
-  
-  # Reordering columns to match that of existing data
-  uploadData <- dplyr::select(uploadData, colnames(existingData))
-  
-  # Combining with preexisting data
-  data <- rbind(existingData, uploadData)
-  
-  rm(uploadData, existingData)
-  
-  # Sorting ID and Date
-  data <- data[order(data$id, data$date),]
+  shapeFileData$date <<- as.character(shapeFileData$date)
   
   # Overwriting the data file
-  st_write(data, dsn = paste(files$migrationData[3], files$migrationData[2], sep = "/"), driver = "ESRI Shapefile", append = FALSE, delete_layer = TRUE)
+  st_write(shapeFileData, 
+           dsn = paste(files$migrationData[3], files$migrationData[2], sep = "/"), 
+           driver = "ESRI Shapefile", 
+           append = FALSE, 
+           delete_layer = TRUE
+  )
   
-  print("ShapeFile Upload: Data Saving Successful")
+  output$sfConsole <- renderText("Migration Data Saved")
+  
   # ---- End of Data Saving ----
 })
 
 
 # ---
-# Server Code for the TIF File Upload (Small Files)
+# Server Code for TIF File Upload
 # ---
-observeEvent(input$tifSubmitButton, {
+
+# File Select for the .tif and .img files
+observe({
+  shinyFileChoose(
+    input = input, 
+    id = 'layerUpload',
+    roots = root,
+    filetypes = c('tif', 'img'),
+  )
+  
+  layerPath <- parseFilePaths(root, input$layerUpload)$datapath
+  
+  if(length(layerPath) != 0){
+    # Show the layer path
+    output$layerFileDisplay <- renderText(layerPath)
+    
+    output$layerConsole <- renderText("Layer Path Imported")
+  }
+})
+
+
+# Information Recording
+observeEvent(input$layerSubmit, {
   # ---
   # Validation
   # ---
+  output$layerConsole <- renderText("Validating...")
   
+  layerPath <- parseFilePaths(root, input$layerUpload)$datapath
   
-  print("TIF Upload: Validation Complete")
+  validate(
+    # Checking if layer exists
+    need(length(layerPath) != 0 & file.exists(layerPath), message = "Layer Does Not Exist"),
+    
+    # Checking if a data type is provided
+    need(length(input$layerPurpose) != 0 | length(input$layerPurposeText) != 0, message = "Data Type Not Provided")
+  )
   
+  output$layerConsole <- renderText("Validation Tests Passed")
+  
+  # -----
   
   # ---
   # Extracting Information
   # ---
-  
-  # Create a Raster Layer from the Data
-  layer <- raster(input$tifFileUpload$datapath)
+  output$layerConsole <- renderText("Extracting Information...")
   
   # Extracting the Type of Data the .tif File Contains
-  dataType <- input$tifFilePurpose
+  dataType <- input$layerPurpose
   if(dataType == "Other"){
-    dataType <- input$tifFilePurposeTextInput
+    dataType <- input$layerPurposeText
   }
   
   # Extracting the Date Range of the .tif File.
   startDate <- NA
   endDate <- NA
-  if(input$tifDateRangeCheck){
-    startDate <- input$tifDateRange[1]
-    endDate <- input$tifDateRange[2]
+  if(input$layerDateRangeCheck){
+    startDate <- input$layerDateRange[1]
+    endDate <- input$layerDateRange[2]
   }
   
-  # Generating the Name of the File
-  fileName <- paste(paste(dataType, as.numeric(startDate), as.numeric(endDate), sep = "-"), ".tif", sep = "")
   
-  print("TIF Upload: Information Extracted")
-  
+  output$layerConsole <- renderText("Information Extracted")
   
   # --- 
-  # Saving the Layer
+  # Saving Information
   # --- 
+  output$layerConsole <- renderText("Saving Information")
   
-  # Saving the Layer
-  raster::writeRaster(layer, paste(files$rasterLayers[3], fileName, sep = "/"))
-  
-  rm(layer)
-  
-  print("TIF Upload: Layer Saved")
-  
-  # --- 
-  # Recording Information About the Layer
-  # ---
-  
-  # The rasterlayer information will later be saved to a .csv file later for convenience 
-  # The dataframe will contain information: File Name, Information, Start Date, End Date
+  # The information will be saved to a .csv file for convenience 
   layerInformation <- data.frame(matrix(ncol = 4, nrow = 1))
   
   # Setting the file name
-  layerInformation[1,1] <- fileName
-  rm(fileName)
+  layerInformation[1,1] <- layerPath
+  rm(layerPath)
   
   # Setting the information type
   layerInformation[1,2] <- dataType
@@ -220,7 +238,7 @@ observeEvent(input$tifSubmitButton, {
   rm(endDate)
   
   # Setting column names
-  colnames(layerInformation) <- c("File.Name", "Data.Type", "Start.Date", "End.Date")
+  colnames(layerInformation) <- c("Path", "Data.Type", "Start.Date", "End.Date")
   
   # Saving the information to a .csv file
   existingData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
@@ -230,10 +248,5 @@ observeEvent(input$tifSubmitButton, {
             row.names = FALSE)
   rm(layerInformation, existingData)
   
-  print("TIF Upload: Layer Information Recorded")
+  output$layerConsole <- renderText("Information Saved")
 })
-
-
-# ---  
-# Server Code for the TIF File Upload (Large Files)
-# ---
