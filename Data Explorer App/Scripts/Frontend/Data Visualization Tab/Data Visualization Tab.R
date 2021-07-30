@@ -6,9 +6,18 @@ dataVisualizeTab <- tabPanel(
   # UI Elements
   titlePanel("Visualize Data"),
   
-  navlistPanel(
-    plotDataNav,
+  sidebarLayout(
+    sidebarPanel(
+      uiOutput(
+        outputId = "visualInput" 
+      )
+    ),
     
-    id = "dataVisualizeTabs"
+    mainPanel(
+      plotOutput(
+        outputId = "visualView"
+      )
+    )
+    
   )
 )

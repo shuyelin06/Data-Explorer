@@ -2,7 +2,7 @@
 # Remove All Variables: rm(list = ls(all = TRUE))
 
 # Checking that the user has the required packages installed
-if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate") %in% installed.packages()[,1] == FALSE)){
+if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate", "ggplot2") %in% installed.packages()[,1] == FALSE)){
   stop("You must install the following packages: circular, sf, raster, dplyr, shiny")
 }
 
@@ -10,6 +10,9 @@ if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate"
 # Loading Packages
 require(shiny) # Loading the Shiny Package used to create the app
 require(shinyFiles) # Loading the shinyFiles package needed to access client-side files
+
+require(ggplot2) # Loading the ggplot2 package used for data plotting
+require(cowplot) # Loading the cowplot package used to have multiple plots in a grid - like layout.
 
 require(lubridate) # Loading the lubridate package used for dates
 require(dplyr) # Loading the dplyr package used for data manipulation
@@ -21,11 +24,8 @@ source("./Scripts/Functions/CalcBurst.R", local = TRUE) # Loading the CalcBurst 
 source("./Scripts/Functions/CalcMovParams.R", local = TRUE) # Loading the CalcMovParams custom function created by Dr. Merkle
 
 
-
 # Defining global variables (will be used throughout the app)
 files <- read.csv("./Data/Settings/Files.csv") # Contains the various different file paths
-
-migrationData <- NA # Will contain the saved migration data
 
 monthNames <- data.frame(month = 1:12, name = c( # Contains the months in the year and their names
   "January", 
