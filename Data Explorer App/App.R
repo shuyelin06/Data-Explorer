@@ -2,7 +2,7 @@
 # Remove All Variables: rm(list = ls(all = TRUE))
 
 # Checking that the user has the required packages installed
-if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate") %in% installed.packages()[,1] == FALSE)){
+if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate", "ggplot2") %in% installed.packages()[,1] == FALSE)){
   stop("You must install the following packages: circular, sf, raster, dplyr, shiny")
 }
 
@@ -10,6 +10,9 @@ if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate"
 # Loading Packages
 require(shiny) # Loading the Shiny Package used to create the app
 require(shinyFiles) # Loading the shinyFiles package needed to access client-side files
+
+require(ggplot2) # Loading the ggplot2 package used for data plotting
+require(cowplot) # Loading the cowplot package used to have multiple plots in a grid - like layout.
 
 require(lubridate) # Loading the lubridate package used for dates
 require(dplyr) # Loading the dplyr package used for data manipulation

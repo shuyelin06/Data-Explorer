@@ -144,14 +144,13 @@ observeEvent(input$selectDataRetrieve, {
   
   
   # ---
-  # Adding Biological Year and Seasons
+  # Adding Biological Year, Seasons, and Months
   # ---
   time <- Sys.time()
   print("Data Select: Adding Bio Year and Seasons")
   
   # Extracting information from the Biological Year.csv file
   bioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/")) # Importing information from the file
-  
   
   # Adding Seasons to the Migration Data
   for(i in 1:nrow(bioYearData)){
