@@ -1,4 +1,4 @@
-"format","migrationData","rasterLayers","bioYear"
-"Purpose","Migration Data","Raster Layers","Biological Year"
-"File Name","Migration Data.shp","Layers.csv","Biological Year.csv"
-"File Path","./Data/Migration Data","./Data/Raster Layers","./Data/Settings"
+"format","migrationData","rasterLayers","layerDefine","bioYear"
+"Purpose","Migration Data","Raster Layers","Layer Define","Biological Year"
+"File Name","Migration Data.shp","Layers.csv","DataTypes.csv","Biological Year.csv"
+"File Path","./Data/Migration Data","./Data/Raster Layers","./Data/Raster Layers","./Data/Settings"

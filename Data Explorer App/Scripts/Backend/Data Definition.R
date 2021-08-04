@@ -1,46 +1,47 @@
 # ---
-# Biological Year Select
+# Code for Biological Year Select
 # ---
 
-# Render UI (for season definitions) to match the dropdown change
+# Render the season inputs (and their appropriate order) based on the dropdown change
 output$seasonDefining <- renderUI({
+  # This season defining is reactive; it will automatically change based on the dropdown
   dropDownValue <- input$biologicalYearSelect 
-  # Checking if an actual month was selected
-  if(dropDownValue != "Click Here to Choose..."){
+  
+  # Adding Title Panel
+  uiOutput <- tagList(titlePanel("Define Seasons for the Biological Year"))
     
-    # Adding Title Panel
-    uiOutput <- tagList(titlePanel("Define Seasons for the Biological Year"))
-    
-    # --- 
-    # Adding inputs for defining seasons (starting with the month selected)
-    # ---
-    
-    # Creating the biological year from the
-    biologicalYear <- append(monthNames$name[match(dropDownValue, monthNames$name): 12], monthNames$name[1: match(dropDownValue, monthNames$name)-1])
-    
-    # Extracting preexisting biological year data
-    savedBioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/"))
-    
-    # Creating inputs
-    for(month in biologicalYear){
-      inputValue = ""
-      if(nrow(savedBioYearData) == 12){
-        inputValue = savedBioYearData$season[match(month, savedBioYearData$month)]
-      }
-      
-      uiOutput <- tagList(uiOutput, isolate(textInput(
-        inputId = paste("seasonSelect", month, sep = ""),
-        label = month,
-        value = inputValue
-      )))
+  # --- 
+  # Adding inputs for defining seasons (starting with the month selected)
+  # ---
+  
+  # Creating the biological year from the
+  biologicalYear <- append(monthNames$name[match(dropDownValue, monthNames$name): 12], monthNames$name[1: match(dropDownValue, monthNames$name)-1])
+  
+  # Extracting preexisting biological year data
+  savedBioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/"))
+  
+  # Creating inputs
+  for(month in biologicalYear){
+    inputValue = ""
+    if(nrow(savedBioYearData) == 12){
+      inputValue = savedBioYearData$season[match(month, savedBioYearData$month)]
     }
     
-    # Return the ui elements created
-    uiOutput
-  } 
+    uiOutput <- tagList(uiOutput, isolate(textInput(
+      inputId = paste("seasonSelect", month, sep = ""),
+      label = month,
+      value = inputValue
+    )))
+  }
+  
+  # Return the ui elements created
+  uiOutput
   
 })
 
+observe({
+  
+})
 # On click of the save button, validate that all the data necessary is provided, and save it to a .csv file for later use.
 observeEvent(input$seasonSave, {
   # ---
@@ -93,6 +94,76 @@ observeEvent(input$seasonSave, {
   print("Defining Biological Year: Biological Year Saved")
 })
 
+# ---
+# Layer Define
+# ---
+output$layerDefineOutput <- renderUI(
+  {
+    dataTypes <- c(
+      "dist",
+      "speed",
+      "rel_angle",
+      unique(layerData()$Data.Type)
+    )
+    
+    dataDefine <- layerDefinitions()
+    
+    uiOutput <- tagList()
+    for(type in dataTypes){
+      existingType <- character(0)
+      if(type %in% dataDefine$DataType){
+        if(dataDefine$Definition[match(type, dataDefine$DataType)] == "Continuous"){
+          existingType = "Continuous"
+        } else {
+          existingType = "Discrete"
+        }
+      } 
+      
+      uiOutput <- tagList(
+        uiOutput,
+        
+        isolate(
+          radioButtons(
+            inputId <- paste("define", type, sep = ""),
+            label = type,
+            choices = c(
+              "Continuous",
+              "Discrete"
+            ),
+            selected = existingType,
+            inline = TRUE
+          )
+        )
+        
+      )
+    }
+    
+    uiOutput
+  }
+)
+
+observeEvent(input$layerDefineSave, {
+  dataTypes <- c(
+    "dist",
+    "speed",
+    "rel_angle",
+    unique(layerData()$Data.Type)
+  )
+  
+  dataframe <- data.frame(matrix(ncol = 2, nrow = 0))
+  
+  for(type in dataTypes){
+    text <- input[[paste("define", type, sep = "")]]
+    
+    if(text != ""){
+      dataframe <- rbind(dataframe, c(type, text))
+    }
+  }
+  
+  colnames(dataframe) <- c("DataType", "Definition")
+  
+  write.csv(dataframe, paste(files$layerDefine[3], files$layerDefine[2], sep = "/"))
+})
 
 # ---
 # Data Select
@@ -102,10 +173,13 @@ observeEvent(input$seasonSave, {
 output$selectAddData <- renderUI(
   {
     dataTypes <- unique(layerData()$Data.Type)
+    dataDefine <- layerDefinitions()
     
-    if(length(dataTypes) == 0){
-      h3("No TIF Data Found")
-    } else {
+    if(length(dataTypes) != 0){
+      # Removing the data types which do not have continuous or discrete assigned to them
+      dataTypes <- dataTypes[dataTypes %in% dataDefine$DataType]
+      
+      # Creating a CheckboxGroupInput so the user can choose what layer data to load
       checkboxGroupInput(
         inputId = "selectTIFinfo",
         label = "Include TIF Information",
@@ -148,6 +222,10 @@ observeEvent(input$selectDataRetrieve, {
   # ---
   time <- Sys.time()
   print("Data Select: Adding Bio Year and Seasons")
+  
+  # Adding Month to the Migration Data
+  data$month <- month(data$date)
+  
   
   # Extracting information from the Biological Year.csv file
   bioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/")) # Importing information from the file
@@ -201,8 +279,8 @@ observeEvent(input$selectDataRetrieve, {
   }
   rm(biologicalYear, i, withinYear) # Removing unneeded variables from memory
   
-  # Moving bioYear and seasons to the front of the dataframe (as they're used for grouping)
-  data <- dplyr::select(data, id, date, bioYear, season, dist, speed, abs_angle, rel_angle, geometry)
+  # Moving bioYear, seasons, and month to the front of the dataframe (as they're used for grouping)
+  data <- dplyr::select(data, id, date, bioYear, season, month, dist, speed, abs_angle, rel_angle, geometry)
   
   print(paste("Data Select: Finished Adding Bio Year and Seasons", "-", Sys.time() - time, "seconds"))
   

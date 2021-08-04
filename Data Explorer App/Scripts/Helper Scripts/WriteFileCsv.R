@@ -15,6 +15,9 @@ dataframe$migrationData <- c("Migration Data", "Migration Data.shp", "./Data/Mig
 # Raster Layer Column
 dataframe$rasterLayers <- c("Raster Layers", "Layers.csv", "./Data/Raster Layers")
 
+# Layer Define Column
+dataframe$layerDefine <- c("Layer Define", "DataTypes.csv", "./Data/Raster Layers")
+
 # Biological Year Column
 dataframe$bioYear <- c("Biological Year", "Biological Year.csv", "./Data/Settings")
 
