@@ -146,6 +146,8 @@ print(paste("Data Select: Finished Adding TIF File Information", "-", Sys.time()
 rm(time)
 
 
+bioYear <- 2012
+dplyr::filter(data, (!!!rlang::syms("bioYear")) == bioYear, season == "Middle")$season
 
 
 # ----
@@ -329,3 +331,42 @@ if('id' %in% colnames(groupings)){ # Plot for split ids
 
 
 plot
+
+
+
+
+# Time to beat: 3.52612996101379 seconds
+# Extracting Biological Year and Group
+split <- strsplit(data$grouping[i], c("-"))[[1]] # Using Regex to extract bioYear and group 
+
+year <- as.numeric(split[1]) # Getting Biological Year
+group <- split[2] # Getting Grouping (season, month, biological year)
+
+lapply(list(data$grouping, data$id), print)
+
+
+
+
+
+time <- Sys.time()
+vector <- sapply(paste(data$id, data$grouping, sep = "-"), extractWithSplit)
+
+extractWithSplit <- function(d){
+  split <- strsplit(d, c("-"))[[1]]
+  
+  values <- dplyr::filter(migrationData[migrationData$id == as.numeric(split[1])], bioYear == as.numeric(split[2]), (!!!rlang::syms(groupBy)) == split[3])
+  
+  mean(values[[dataType]])
+}
+print(vector)
+print(Sys.time() - time)
+
+groupBy <- "month"
+dataType <- "Tree Cover"
+system.time({
+  d <- dplyr::filter(migrationData[migrationData$id == 1,], bioYear == 2011, (!!!rlang::syms(groupBy)) == 2)
+  
+  print(d)
+  })
+averages <- dplyr::filter(migrationData, bioYear == year, (!!!rlang::syms(groupBy)) == group)
+averages <- numeric(nrow(d))
