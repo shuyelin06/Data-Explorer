@@ -94,6 +94,76 @@ observeEvent(input$seasonSave, {
   print("Defining Biological Year: Biological Year Saved")
 })
 
+# ---
+# Layer Define
+# ---
+output$layerDefineOutput <- renderUI(
+  {
+    dataTypes <- c(
+      "dist",
+      "speed",
+      "rel_angle",
+      unique(layerData()$Data.Type)
+    )
+    
+    dataDefine <- layerDefinitions()
+    
+    uiOutput <- tagList()
+    for(type in dataTypes){
+      existingType <- character(0)
+      if(type %in% dataDefine$DataType){
+        if(dataDefine$Definition[match(type, dataDefine$DataType)] == "Continuous"){
+          existingType = "Continuous"
+        } else {
+          existingType = "Discrete"
+        }
+      } 
+      
+      uiOutput <- tagList(
+        uiOutput,
+        
+        isolate(
+          radioButtons(
+            inputId <- paste("define", type, sep = ""),
+            label = type,
+            choices = c(
+              "Continuous",
+              "Discrete"
+            ),
+            selected = existingType,
+            inline = TRUE
+          )
+        )
+        
+      )
+    }
+    
+    uiOutput
+  }
+)
+
+observeEvent(input$layerDefineSave, {
+  dataTypes <- c(
+    "dist",
+    "speed",
+    "rel_angle",
+    unique(layerData()$Data.Type)
+  )
+  
+  dataframe <- data.frame(matrix(ncol = 2, nrow = 0))
+  
+  for(type in dataTypes){
+    text <- input[[paste("define", type, sep = "")]]
+    
+    if(text != ""){
+      dataframe <- rbind(dataframe, c(type, text))
+    }
+  }
+  
+  colnames(dataframe) <- c("DataType", "Definition")
+  
+  write.csv(dataframe, paste(files$layerDefine[3], files$layerDefine[2], sep = "/"))
+})
 
 # ---
 # Data Select
@@ -103,10 +173,13 @@ observeEvent(input$seasonSave, {
 output$selectAddData <- renderUI(
   {
     dataTypes <- unique(layerData()$Data.Type)
+    dataDefine <- layerDefinitions()
     
-    if(length(dataTypes) == 0){
-      h3("No TIF Data Found")
-    } else {
+    if(length(dataTypes) != 0){
+      # Removing the data types which do not have continuous or discrete assigned to them
+      dataTypes <- dataTypes[dataTypes %in% dataDefine$DataType]
+      
+      # Creating a CheckboxGroupInput so the user can choose what layer data to load
       checkboxGroupInput(
         inputId = "selectTIFinfo",
         label = "Include TIF Information",

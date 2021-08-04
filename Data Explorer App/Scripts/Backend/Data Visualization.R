@@ -3,6 +3,8 @@ output$visualInput <- renderUI({
   # Migration Data
   data <- migrationData()
   
+  dataDefine <- layerDefinitions()
+  
   # UI Output 
   uiOutput <- NA
   
@@ -17,10 +19,10 @@ output$visualInput <- renderUI({
         label = "Select the Data You Would Like to Display",
         choices = {
           # Removing GroupBy columns
-          list <- colnames(dplyr::select(data, c(-id, -date, -bioYear, -season, -month)))
+          list <- colnames(data)
           
-          # Removing the geometry column (we can have a specific area to plot this later)
-          list[!(list %in% c("geometry"))]
+          # Removing all data types who don't have discrete or continuous defined for them
+          list[list %in% dataDefine$DataType]
         }
       )
     ),
@@ -30,11 +32,11 @@ output$visualInput <- renderUI({
         inputId = "visualGroupBy",
         label = "Group Data By...",
         choices = c(
+          "None",
           "bioYear",
           "season",
           "month"
-        ),
-        selected = character(0)
+        )
       )
     ),
     
@@ -65,6 +67,9 @@ output$visualView <- renderPlot({
   # Migration Data
   migrationData <- st_drop_geometry(migrationData())
   
+  # Getting if the Layer Data is Discrete or Continuous
+  layerDefine <- layerDefinitions()
+  
   # Importing the Data the user wants to display
   displayData <- input$visualChooseData
   
@@ -78,16 +83,24 @@ output$visualView <- renderPlot({
   selectedIDs <- input$visualChooseIds
   
   uiOutput <- NA
-  if(is.null(displayData) | is.null(groupBy)){
+  
+  # Checking if a groupBy and dataType is selected
+  if(is.null(displayData)){
     uiOutput <- h3("Please Select Data and a Grouping to Display")
   } 
+  
+  # Checking if SplitIDs is selected and, if so, if any IDs are selected
   else if(splitIDs & is.null(selectedIDs)){
     uiOutput <- h3("Please Select IDs")
   } 
-  else {
-    # https://stackoverflow.com/questions/2908822/speed-up-the-loop-operation-in-r
-    # http://r-statistics.co/Strategies-To-Improve-And-Speedup-R-Code.html#:~:text=Strategies%20to%20Speed-up%20R%20Code%201%20Vectorize%20and,ifelse%20%28%29%20whenever%20possible.%20...%20More%20items...%20
+  
+  # Density Plots if no group by is selected
+  else if(groupBy == "None"){
     
+  }
+  
+  # Plot continiuous and discrete data
+  else {
     # List of plots to be displayed
     plots <- list()
     
@@ -97,7 +110,7 @@ output$visualView <- renderPlot({
     rm(temp)
     
     # Plots for Continuous Data
-    for(dataType in displayData){
+    for(dataType in displayData[displayData %in% layerDefine$DataType[layerDefine$Definition == "Continuous"]]){
       # Plotting for Split IDs
       if(splitIDs){
         
@@ -200,10 +213,127 @@ output$visualView <- renderPlot({
         plots <- append(plots, list(plot))
       }
       
-      
-      uiOutput <- plot_grid(plotlist = plots)
     }
       
+    print(displayData[displayData %in% layerDefine$DataType[layerDefine$Definition == "Discrete"]])
+    # Plots for Discrete Data
+    for(dataType in displayData[displayData %in% layerDefine$DataType[layerDefine$Definition == "Discrete"]]){
+      print(paste("Discrete Data", dataType))
+      
+      if(splitIDs){
+        discreteData <- unique(migrationData[[dataType]])
+        
+        # Creating Dataframe
+        data <- data.frame(matrix(ncol = 0, nrow = length(groupings) * length(discreteData) * length(selectedIDs)))
+        
+        data$id <- rep(selectedIDs, each = length(discreteData) * length(groupings)) # Id column
+        data$grouping <- rep(groupings, times = length(discreteData) * length(selectedIDs)) # Grouping column
+        data$type <- rep(rep(discreteData, each = length(groupings)), times = length(selectedIDs)) # Type column
+        
+        # Calculating Averages
+        totals <- numeric(nrow(data))
+        i <- 1
+        for(id in unique(data$id)){
+          temp <- migrationData[migrationData$id == id,]
+          
+          for(d in discreteData){
+            temp2 <- temp[temp[[dataType]] == d,]
+            
+            for(grouping in groupings){
+              # Extracting Biological Year and Group
+              split <- strsplit(grouping, c("-"))[[1]] # Using Regex to extract bioYear and group 
+              
+              year <- as.numeric(split[1]) # Getting Biological Year
+              group <- split[2] # Getting Grouping (season, month, biological year)
+              
+              rm(split)
+              
+              
+              totals[i] <- nrow(dplyr::filter(temp2, bioYear == year, (!!!rlang::syms(groupBy)) == group))
+              i <- i + 1
+            }
+            
+            rm(temp2)
+          }
+          rm(temp)
+        }
+        
+        data$count <- totals
+        rm(totals, i, discreteData)
+        
+        
+        # Formatting Data Before Plotting
+        data$type <- as.character(data$type)
+        data <- na.omit(data)
+        
+        
+        # Plotting Data
+        plot <- ggplot(data, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = count, fill = type)) # Creating the plot
+        
+        plot <- plot + geom_col(position = "stack") # Adding columns
+        
+        # Adding Labels
+        plot <- plot + xlab("Time Group") + ylab(paste("Number of Occurrences")) + ggtitle(paste("Number of Occurrences of", dataType, "Per", groupBy, "For Different IDs")) # Adding labels
+        plot <- plot + scale_x_discrete(labels = lapply(strsplit(data$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
+        plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
+        
+        # Facet Wrapping (Each ID will get its own plot)
+        plot <- plot + facet_wrap(~id)
+        
+        plots <- append(plots, list(plot))
+      } else {
+        discreteData <- unique(migrationData[[dataType]])
+        
+        # Creating Dataframe
+        data <- data.frame(matrix(ncol = 0, nrow = length(groupings) * length(discreteData)))
+        
+        data$grouping <- rep(groupings, times = length(discreteData))
+        data$type <- rep(discreteData, each = length(groupings))
+        
+        # Calculating Averages
+        totals <- numeric(nrow(data))
+        i <- 1
+        for(d in discreteData){
+          temp <- migrationData[migrationData[[dataType]] == d,]
+          
+          for(grouping in groupings){
+            # Extracting Biological Year and Group
+            split <- strsplit(grouping, c("-"))[[1]] # Using Regex to extract bioYear and group 
+            
+            year <- as.numeric(split[1]) # Getting Biological Year
+            group <- split[2] # Getting Grouping (season, month, biological year)
+            
+            rm(split)
+            
+            
+            totals[i] <- nrow(dplyr::filter(temp, bioYear == year, (!!!rlang::syms(groupBy)) == group))
+            i <- i + 1
+          }
+          rm(temp)
+        }
+        
+        data$count <- totals
+        rm(totals, i, discreteData)
+        
+        # Formatting Data Before Plotting
+        data$type <- as.character(data$type)
+        data <- na.omit(data)
+        
+        # Plotting Data
+        plot <- ggplot(data, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = count, fill = type)) # Creating the plot
+        
+        plot <- plot + geom_col(position = "stack") # Adding columns
+        
+        # Adding Labels
+        plot <- plot + xlab("Time Group") + ylab(paste("Number of Occurrences")) + ggtitle(paste("Number of Occurrences of", dataType, "per", groupBy)) # Adding labels
+        plot <- plot + scale_x_discrete(labels = lapply(strsplit(data$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
+        plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
+
+        plots <- append(plots, list(plot))
+      }
+    }
+    
+    uiOutput <- plot_grid(plotlist = plots)
   }
     
   uiOutput

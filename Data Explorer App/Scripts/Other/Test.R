@@ -2,6 +2,9 @@
 
 files <- read.csv("./Data/Settings/Files.csv")
 
+time <- Sys.time()
+print("Data Select: Importing and Formatting Migration Data")
+
 # Importing Migration Data
 data <- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
 
@@ -17,10 +20,18 @@ data$date <- lubridate::ymd_hms(data$date,
 # Removing Burst, DT and StepFlag columns (I don't think they'll be important in plotting)
 data <- dplyr::select(data, id, date, dist, speed, abs_angle, rel_angle, geometry)
 
+print(paste("Data Select: Finished Formatting Migration Data", "-", Sys.time() - time, "seconds"))
+
 
 # ---
 # Adding Biological Year, Seasons, and Months
 # ---
+time <- Sys.time()
+print("Data Select: Adding Bio Year and Seasons")
+
+# Adding Month to the Migration Data
+data$month <- month(data$date)
+
 
 # Extracting information from the Biological Year.csv file
 bioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/")) # Importing information from the file
@@ -74,8 +85,8 @@ for(i in 1:nrow(biologicalYear)){
 }
 rm(biologicalYear, i, withinYear) # Removing unneeded variables from memory
 
-# Moving bioYear and seasons to the front of the dataframe (as they're used for grouping)
-data <- dplyr::select(data, id, date, bioYear, season, dist, speed, abs_angle, rel_angle, geometry)
+# Moving bioYear, seasons, and month to the front of the dataframe (as they're used for grouping)
+data <- dplyr::select(data, id, date, bioYear, season, month, dist, speed, abs_angle, rel_angle, geometry)
 
 print(paste("Data Select: Finished Adding Bio Year and Seasons", "-", Sys.time() - time, "seconds"))
 
@@ -146,227 +157,168 @@ print(paste("Data Select: Finished Adding TIF File Information", "-", Sys.time()
 rm(time)
 
 
-bioYear <- 2012
-dplyr::filter(data, (!!!rlang::syms("bioYear")) == bioYear, season == "Middle")$season
+
+
 
 
 # ----
 # Plotting Code
 # ----
 
-# Importing the Data the user wants to display
-displayData <- c("dist", "speed")
 
+# --
+
+# Importing the Data the user wants to display
+displayData <- c("Tree Cover")
+
+dataType <- "Test"
 # Importing how the user wants to group the data
-groupBy <- "bioYear"
+groupBy <- "month"
 
 # Importing if the user wants to split animal IDs
-splitIds <- FALSE
+splitIDs <- FALSE
 
-uiOutput <- NA
-if(is.null(displayData)){
-  uiOutput <- h3("Please Select Data to Display")
-} else {
-  # https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf
-  
-  plots <- list()
-  
-  # If no groupby is specified, display data in one variable plots
-  if(is.null(groupBy)){
-    # Iterate through every data type
-    for(dataType in displayData){
-      plot <- NA
-      
-      # Create plot
-      plot <- ggplot(data, aes_string(dataType))
-      
-      
-      # If data is continuous, use geom_density
-      plot <- plot + geom_density(kernel = "gaussian")
-      
-      # If data is discrete, use geom_bar (don't know how to know if its discrete?)
-      
-      
-      
-      plots <- append(plots, list(plot))
-    }
-  } 
-  
-  # Else, display data in x/y variable plots
-  else {
-    # Have a group of plots for each data type
-    for(dataType in displayData){
-      # Have a plot for each grouping
-      for(grouping in groupBy){
-        plot <- NA
-        
-        # Create plot
-        plot <- ggplot(data, aes_string("date", dataType))
-        
-        plot <- plot + geom_line()
-        
-        
-        plots <- append(plots, list(plot))
-      }
-      
-    }
-  }
-  
-  uiOutput <- plot_grid(plotlist = plots, ncol = 2)
-  plot(plot_grid(plotlist = plots, ncol = 2))
-}
+# For now, if split IDs is selected, all ids will be displayed
+selectedIDs <- c(1, 11)
 
 
-# ---
-# Plotting Test Code
-# ---
-# https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf
 
-# Continuous Data: Create a Grouped Barchart (grouped in case IDs are split)
-
-# When group by is selected (CONTINUOUS DATA), average the values for a given time period and plot those values 
-splitIDs <- TRUE
-selectedIDs <- unique(data$id)
-groupBy <- "month"
-dataType <- "Tree Cover"
-
-# Get unique values for unique biological year - season pairs
-temp <- dplyr::distinct(dplyr::select(st_drop_geometry(data), c('bioYear', groupBy)))
-
-groupings <- data.frame(grouping = paste(temp[["bioYear"]], temp[[groupBy]], sep = "-"))
+# Create the groupings
+temp <- unique(dplyr::select(migrationData, c('bioYear', groupBy)))
+groupings <- paste(temp$bioYear, temp[[groupBy]], sep = "-")
 rm(temp)
 
 
-if(splitIDs){ # If split IDs is specified, create the same groupings for each id
-  groups <- groupings$grouping # Saving the groupings 
+# --- Plotting Discrete (Non-Split)
+
+discreteData <- unique(migrationData[[dataType]])
+
+# Creating Dataframe
+data <- data.frame(matrix(ncol = 0, nrow = length(groupings) * length(discreteData)))
+
+data$grouping <- rep(groupings, times = length(discreteData))
+data$type <- rep(discreteData, each = length(groupings))
+
+# Calculating Averages
+totals <- numeric(nrow(data))
+i <- 1
+for(d in discreteData){
+  temp <- migrationData[migrationData[[dataType]] == d,]
   
-  groupings$grouping <- c() # Clearing the grouping column
-  groupings$id <- c() # Creating an ID column
-  
-  # Adding groupings for each ID 
-  for(id in selectedIDs){
-    idFrame <- data.frame(grouping = groups, id = id)
+  for(grouping in groupings){
+    # Extracting Biological Year and Group
+    split <- strsplit(grouping, c("-"))[[1]] # Using Regex to extract bioYear and group 
     
-    groupings <- rbind(groupings, idFrame)
-  }
-  
-  rm(id, groups, idFrame, splitIDs, selectedIDs) # Removing unnecessary variables
-  
-}
-
-# For every grouping, average the values for that time frame (and ID)
-averages <- c() 
-
-for(i in 1:nrow(groupings)){
-  # Extracting Biological Year and Group
-  grouping <- groupings$grouping[i]
-  
-  split <- strsplit(grouping, c("-"))[[1]]
-  
-  bioYear <- split[1] # Getting Biological Year
-  group <- split[2] # Getting Grouping (season, month, biological year)
-  
-  rm(split, grouping)
-  
-  # Extracting the data values for that time frame
-  temp <- NA
-  if('id' %in% colnames(groupings)){ # If an ID column is specified, filter the data frame with ID as well
-    yearMatch <- data[['bioYear']] == as.numeric(bioYear)
-    groupMatch <- data[[groupBy]] == group
-    idMatch <- data$id == groupings$id[i]
-      
-    temp <- data[[dataType]][yearMatch & groupMatch & idMatch]
-    rm(idMatch, yearMatch, groupMatch)
-  } else {
-    yearMatch <- data[['bioYear']] == as.numeric(bioYear)
-    groupMatch <- data[[groupBy]] == group
+    year <- as.numeric(split[1]) # Getting Biological Year
+    group <- split[2] # Getting Grouping (season, month, biological year)
     
-    temp <- data[[dataType]][yearMatch & groupMatch]
-    rm(yearMatch, groupMatch)
+    rm(split)
+    
+    
+    totals[i] <- nrow(dplyr::filter(temp, bioYear == year, (!!!rlang::syms(groupBy)) == group))
+    i <- i + 1
   }
-  
-  temp <- na.omit(temp)
-  
-  averages <- append(averages, mean(temp))
-  
-  rm(bioYear, group, temp)
+  rm(temp)
 }
 
-# Adding the averages column
-groupings$average <- averages
-rm(averages)
-
-# Formatting the groupings before plotting
-groupings$id <- as.character(groupings$id) # Setting IDs to characters (so the legend doesn't show a gradient)
-groupings <- na.omit(groupings) # Removing NA values
+data$count <- totals
+rm(totals, i)
 
 
-# Creating the plot
-plot <- NA
+# Formatting Data Before Plotting
+data$type <- as.character(data$type)
+data <- na.omit(data)
 
-if('id' %in% colnames(groupings)){ # Plot for split ids
-  # Adding Data
-  plot <- ggplot(data = groupings, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = average, fill = id))
-  
-  # Creating the Visuals
-  plot <- plot + geom_col(position = "dodge")
-  
-  # Adding Labels
-  # Adding Labels
-  plot <- plot + xlab("Time Group") + ylab(paste("Average", dataType)) + ggtitle(paste("Average", dataType, "per", groupBy)) # Adding labels
-  plot <- plot + scale_x_discrete(labels = lapply(strsplit(groupings$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
-  plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
-} else { # Plot for non-split ids
-  # Adding Data
-  plot <- ggplot(data = groupings, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = average)) # Creating the plot
-  
-  # Creating the Visuals
-  plot <- plot + geom_col() # Adding columns
-  
-  # Adding Labels
-  plot <- plot + xlab("Time Group") + ylab(paste("Average", dataType)) + ggtitle(paste("Average", dataType, "per", groupBy)) # Adding labels
-  plot <- plot + scale_x_discrete(labels = lapply(strsplit(groupings$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
-  plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
-}
 
+# Plotting Data
+plot <- ggplot(data, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = count, fill = type)) # Creating the plot
+
+plot <- plot + geom_col(position = "stack") # Adding columns
+
+# Adding Labels
+plot <- plot + xlab("Time Group") + ylab(paste("Number of Occurrences")) + ggtitle(paste("Number of Occurrences of", dataType, "per", groupBy)) # Adding labels
+plot <- plot + scale_x_discrete(labels = lapply(strsplit(data$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
+plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
 
 plot
 
-
-
-
-# Time to beat: 3.52612996101379 seconds
-# Extracting Biological Year and Group
-split <- strsplit(data$grouping[i], c("-"))[[1]] # Using Regex to extract bioYear and group 
-
-year <- as.numeric(split[1]) # Getting Biological Year
-group <- split[2] # Getting Grouping (season, month, biological year)
-
-lapply(list(data$grouping, data$id), print)
+plots <- append(plots, list(plot))
 
 
 
 
+# --- Plotting Discrete (Split)
 
-time <- Sys.time()
-vector <- sapply(paste(data$id, data$grouping, sep = "-"), extractWithSplit)
-
-extractWithSplit <- function(d){
-  split <- strsplit(d, c("-"))[[1]]
-  
-  values <- dplyr::filter(migrationData[migrationData$id == as.numeric(split[1])], bioYear == as.numeric(split[2]), (!!!rlang::syms(groupBy)) == split[3])
-  
-  mean(values[[dataType]])
-}
-print(vector)
-print(Sys.time() - time)
-
+dataType <- "Test"
+# Importing how the user wants to group the data
 groupBy <- "month"
-dataType <- "Tree Cover"
-system.time({
-  d <- dplyr::filter(migrationData[migrationData$id == 1,], bioYear == 2011, (!!!rlang::syms(groupBy)) == 2)
+
+# Importing if the user wants to split animal IDs
+splitIDs <- FALSE
+
+# For now, if split IDs is selected, all ids will be displayed
+selectedIDs <- c(1, 11)
+
+
+discreteData <- unique(migrationData[[dataType]])
+
+# Creating Dataframe
+data <- data.frame(matrix(ncol = 0, nrow = length(groupings) * length(discreteData) * length(selectedIDs)))
+
+data$id <- rep(selectedIDs, each = length(discreteData) * length(groupings)) # Id column
+data$grouping <- rep(groupings, times = length(discreteData) * length(selectedIDs)) # Grouping column
+data$type <- rep(rep(discreteData, each = length(groupings)), times = length(selectedIDs)) # Type column
+
+# Calculating Averages
+totals <- numeric(nrow(data))
+i <- 1
+for(id in unique(data$id)){
+  temp <- migrationData[migrationData$id == id,]
   
-  print(d)
-  })
-averages <- dplyr::filter(migrationData, bioYear == year, (!!!rlang::syms(groupBy)) == group)
-averages <- numeric(nrow(d))
+  for(d in discreteData){
+    temp2 <- temp[temp[[dataType]] == d,]
+    
+    for(grouping in groupings){
+      # Extracting Biological Year and Group
+      split <- strsplit(grouping, c("-"))[[1]] # Using Regex to extract bioYear and group 
+      
+      year <- as.numeric(split[1]) # Getting Biological Year
+      group <- split[2] # Getting Grouping (season, month, biological year)
+      
+      rm(split)
+      
+      
+      totals[i] <- nrow(dplyr::filter(temp2, bioYear == year, (!!!rlang::syms(groupBy)) == group))
+      i <- i + 1
+    }
+    
+    rm(temp2)
+  }
+  rm(temp)
+}
+
+data$count <- totals
+rm(totals, i)
+
+
+# Formatting Data Before Plotting
+data$type <- as.character(data$type)
+data <- na.omit(data)
+
+
+# Plotting Data
+plot <- ggplot(data, mapping = aes(x = factor(grouping, levels = unique(grouping)), y = count, fill = type)) # Creating the plot
+
+plot <- plot + geom_col(position = "stack") # Adding columns
+
+# Adding Labels
+plot <- plot + xlab("Time Group") + ylab(paste("Number of Occurrences")) + ggtitle(paste("Number of Occurrences of", dataType, "Per", groupBy, "For Different IDs")) # Adding labels
+plot <- plot + scale_x_discrete(labels = lapply(strsplit(data$grouping, c("-")), function(vector) paste(vector[2], " (", vector[1], ")", sep = "")))# Changing the x-axis tick labels
+plot <- plot + theme(axis.text.x = element_text(face = "bold", angle = 45))# Customizing the theme of the plot
+
+# Facet Wrapping (Each ID will get its own plot)
+plot <- plot + facet_wrap(~id)
+
+plot
+
+plots <- append(plots, list(plot))
