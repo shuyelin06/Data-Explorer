@@ -9,9 +9,12 @@ paramNav <- tabPanel(
   selectInput(
     inputId = "biologicalYearSelect",
     label = "Choose Start Month",
-    choices = append(append(c("Click Here to Choose..."), monthNames$name[10:12]), monthNames$name[1:9]),
+    
+    # Begins from Oct -> Dec, then Jan -> Sept
+    choices = append(monthNames$name[10:12], monthNames$name[1:9]),
     selected = {
-      inputSelected <- "Click Here to Choose..."
+      # Default Selected Value: October
+      inputSelected <- "October"
       
       # Checking if there are already settings saved for the biological year
       bioYear <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/"))
@@ -23,26 +26,15 @@ paramNav <- tabPanel(
     }
   ),
   
-  # Defining seasons in the biological year
-  # https://shiny.rstudio.com/articles/dynamic-ui.html
-  conditionalPanel(
-    condition = "input.biologicalYearSelect != 'Click Here to Choose...'",
-    
-    # Output where the season defining where be displayed
-    uiOutput(
-      outputId = "seasonDefining"
-    ),
-    
-    # Button to save changes
-    actionButton(
-      inputId = "seasonSave",
-      label = "Save Changes"
-    )
+  # Output where the season defining where be displayed
+  uiOutput(
+    outputId = "seasonDefining"
   ),
   
-  # Console Messages
-  uiOutput(
-    outputId = "seasonDefiningConsole"
+  # Button to save changes
+  actionButton(
+    inputId = "seasonSave",
+    label = "Save Changes"
   )
 )
 
