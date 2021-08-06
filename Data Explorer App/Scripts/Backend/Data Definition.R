@@ -49,10 +49,10 @@ observeEvent(input$seasonSave, {
   tests <- c()
   
   for(month in monthNames$name){
-    tests <- need(
+    tests <- append(tests, need(
       input[[paste("seasonSelect", month, sep = "")]],
       label = month
-    )
+    ))
     
   }
   validate(tests)

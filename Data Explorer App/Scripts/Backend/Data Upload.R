@@ -90,7 +90,6 @@ observeEvent(input$sfSubmit, {
   # ---
   cat("\n\n --- Data Upload: Validating --- ")
 
-  # Commented out for now as validation is not working 
   validate(
     # Check that there is data loaded
     need(data, message = 'There is no ShapeFile Loaded'),
@@ -290,6 +289,27 @@ output$defineLayerInfo <- renderUI({
 # Information Recording
 observeEvent(input$layerSubmit, {
   layers <- layerPath()
+  
+  # ---
+  # Validation
+  # ---
+  cat("\n\n --- Layer Upload: Validating... --- ")
+  
+  validate(
+    need(layers, label = "Layers")
+  )
+  
+  tests <- c()
+  for(i in 1:ncell(layers)){
+    layer <- layers[i]
+    tests <- append(tests, 
+                    need(input[[paste("layerData", as.character(i), sep = "")]], label = "No DataType Selected")
+                    )
+  }
+
+  validate(tests)
+  
+  cat("\n --- Layer Upload: Validation Check Passed --- ")
   
   # ---
   # Extracting Information
