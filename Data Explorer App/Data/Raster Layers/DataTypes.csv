@@ -1,5 +1,5 @@
 "","DataType","Definition"
-"1","dist","Continuous"
-"2","speed","Continuous"
-"3","rel_angle","Continuous"
+"1","Distance","Continuous"
+"2","Speed","Continuous"
+"3","Relative.Angle","Continuous"
 "4","Tree Cover","Continuous"

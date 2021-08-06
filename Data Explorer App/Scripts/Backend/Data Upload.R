@@ -155,8 +155,12 @@ observeEvent(input$sfSubmit, {
   
   cat("\n\n - Calculating Movement Parameters - \n")
   shapeFileData <<- CalcMovParams(data = shapeFileData) # Calculating Parameters
-  cat("\nFinished calculating Movement Parameters")
+  cat("\nFinished Calculating Movement Parameters")
   
+  
+  cat("\n\n - Removing Unnecessary Columns - \n")
+  shapeFileData <<- dplyr::select(shapeFileData, !c(burst, dt, abs.angle, StepFlag))
+  cat("\nFinished Removing Columns")
   
   cat("\n --- Data Upload: Movement Parameters Calculated --- ")
 
@@ -173,7 +177,6 @@ observeEvent(input$sfSubmit, {
   cat("\n\n - Converting date column back to characters - ")
   shapeFileData$date <<- as.character(shapeFileData$date)
   cat("\nFinished converting date column back to characters")
-  
   
   # Overwriting the data file
   cat("\n\n - Overwriting the migration data file - ")

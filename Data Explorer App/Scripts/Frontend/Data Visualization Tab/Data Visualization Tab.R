@@ -16,6 +16,10 @@ dataVisualizeTab <- tabPanel(
     mainPanel(
       plotOutput(
         outputId = "visualView"
+      ),
+      
+      textOutput(
+        outputId = "visualConsole"
       )
     )
     

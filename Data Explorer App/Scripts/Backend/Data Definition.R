@@ -99,25 +99,18 @@ observeEvent(input$seasonSave, {
 # ---
 output$layerDefineOutput <- renderUI(
   {
-    dataTypes <- c(
-      "dist",
-      "speed",
-      "rel_angle",
-      unique(layerData()$Data.Type)
-    )
-    
+    dataTypes <- unique(layerData()$Data.Type)
     dataDefine <- layerDefinitions()
     
     uiOutput <- tagList()
     for(type in dataTypes){
+      # If the data had already been defined before, display it.
       existingType <- character(0)
+      
       if(type %in% dataDefine$DataType){
-        if(dataDefine$Definition[match(type, dataDefine$DataType)] == "Continuous"){
-          existingType = "Continuous"
-        } else {
-          existingType = "Discrete"
-        }
-      } 
+        existingType <- dataDefine$Definition[match(type, dataDefine$DataType)]
+      }
+      
       
       uiOutput <- tagList(
         uiOutput,
@@ -143,14 +136,16 @@ output$layerDefineOutput <- renderUI(
 )
 
 observeEvent(input$layerDefineSave, {
-  dataTypes <- c(
-    "dist",
-    "speed",
-    "rel_angle",
-    unique(layerData()$Data.Type)
-  )
+  dataTypes <- unique(layerData()$Data.Type)
   
   dataframe <- data.frame(matrix(ncol = 2, nrow = 0))
+  
+  # Defining Movement Parameters as Continuous 
+  dataframe <- rbind(dataframe, 
+                     c("Distance", "Continuous"), 
+                     c("Speed", "Continuous"), 
+                     c("Relative.Angle", "Continuous")
+                     )
   
   for(type in dataTypes){
     text <- input[[paste("define", type, sep = "")]]
@@ -176,13 +171,13 @@ output$selectAddData <- renderUI(
     dataDefine <- layerDefinitions()
     
     if(length(dataTypes) != 0){
-      # Removing the data types which do not have continuous or discrete assigned to them
+      # Data that does not have continuous/discrete assigned to them cannot be loaded 
       dataTypes <- dataTypes[dataTypes %in% dataDefine$DataType]
       
       # Creating a CheckboxGroupInput so the user can choose what layer data to load
       checkboxGroupInput(
         inputId = "selectTIFinfo",
-        label = "Include TIF Information",
+        label = "Choose What Raster Layer Data to Load",
         choices = dataTypes
       )
     }
@@ -191,46 +186,58 @@ output$selectAddData <- renderUI(
 
 # Load Data on a Button Press
 observeEvent(input$selectDataRetrieve, {
-  totalTime <- Sys.time() # Record time elapsed
+  time <- Sys.time() # Record time elapsed
   
   # ---
   # Importing and Formatting Migration Data
   # ---
-  time <- Sys.time()
-  print("Data Select: Importing and Formatting Migration Data")
-  
+  cat("\n\n --- Data Select: Importing and Formatting Migration Data --- ")
+
   # Importing Migration Data
+  cat("\n\n - Importing Migration Data - \n")
   data <- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
+  cat("\nFinished Importing Migration Data")
+  
+  # Renaming Columns
+  cat("\n\n - Renaming Columns - \n")
+  data <- dplyr::rename(data, Distance = dist, Speed = speed, Relative.Angle = rel_angle)
+  cat("\nFinished Renaming Columns")
   
   # Converting ID Column to Numeric
+  cat("\n\n - Converting ID Column to Numeric - \n")
   data$id <- as.numeric(data$id)
+  cat("\nFinished Converting ID Column to Numeric")
   
   # Converting Date Column to POSIXct
+  cat("\n\n - Converting Date Column to POSIXct - \n")
   data$date <- lubridate::ymd_hms(data$date, 
                                   quiet = TRUE,
                                   truncated = 3
   )
+  cat("\nFinished Converting Date Column to POSIXct")
   
-  # Removing Burst, DT and StepFlag columns (I don't think they'll be important in plotting)
-  data <- dplyr::select(data, id, date, dist, speed, abs_angle, rel_angle, geometry)
   
-  print(paste("Data Select: Finished Formatting Migration Data", "-", Sys.time() - time, "seconds"))
+  cat("\n --- Data Upload: Finished Formatting Migration Data --- ")
+  
   
   
   # ---
   # Adding Biological Year, Seasons, and Months
   # ---
-  time <- Sys.time()
-  print("Data Select: Adding Bio Year and Seasons")
-  
-  # Adding Month to the Migration Data
-  data$month <- month(data$date)
-  
-  
+  cat("\n\n --- Data Select: Adding Biological Year, Seasons and Month --- ")
+
   # Extracting information from the Biological Year.csv file
   bioYearData <- read.csv(paste(files$bioYear[3], files$bioYear[2], sep = "/")) # Importing information from the file
   
+  
+  # Adding Month to the Migration Data
+  cat("\n\n - Adding Month Column to Data - \n")
+  data$month <- month(data$date)
+  cat("\nFinished Adding Month Column")
+  
+  
   # Adding Seasons to the Migration Data
+  cat("\n\n - Adding Seasons Column to Data - \n")
   for(i in 1:nrow(bioYearData)){
     month <- bioYearData$number[i] # Obtaining the month
     season <- bioYearData$season[i] # Obtaining the associated season
@@ -239,9 +246,11 @@ observeEvent(input$selectDataRetrieve, {
     data$season[month(data$date) == month] <- season
   }
   rm(i, month, season) # Clearing unneeded variables from memory
+  cat("\nFinished Adding Seasons Column")
   
   
   # Adding Biological Year to the Migration Data
+  cat("\n\n - Adding Biological Year Column to Data - \n")
   startMonth <- bioYearData$number[1] # Finding the start month to the biological year
   rm(bioYearData) # Removing bioYearData (no longer needed)
   
@@ -278,17 +287,17 @@ observeEvent(input$selectDataRetrieve, {
     data$bioYear[withinYear] <- biologicalYear$bioYear[i]
   }
   rm(biologicalYear, i, withinYear) # Removing unneeded variables from memory
+  cat("\nFinished Adding Biological Year Column")
   
   # Moving bioYear, seasons, and month to the front of the dataframe (as they're used for grouping)
-  data <- dplyr::select(data, id, date, bioYear, season, month, dist, speed, abs_angle, rel_angle, geometry)
+  data <- dplyr::select(data, id, date, bioYear, season, month, Distance, Speed, Relative.Angle, geometry)
   
-  print(paste("Data Select: Finished Adding Bio Year and Seasons", "-", Sys.time() - time, "seconds"))
+  cat("\n --- Data Upload: Finished Adding Biological Year, Season and Months --- ")
   
   # ---
   # Adding Information from Selected TIF Files
   # --- 
-  time <- Sys.time()
-  print("Data Select: Adding TIF File Information")
+  cat("\n\n --- Data Select: Adding Selected Raster Layer Information --- ")
   
   # Retrieving the TIF Data that the User Wants
   requestedData <- input$selectTIFinfo
@@ -297,7 +306,7 @@ observeEvent(input$selectDataRetrieve, {
   layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   for(dataType in requestedData){
-    print(paste("Extracting Values for", dataType))
+    cat(paste("\n\n - Extracting Values for", dataType,"- \n"))
     
     # Adding a new blank column for the data type
     data[[dataType]] <- NA
@@ -319,11 +328,9 @@ observeEvent(input$selectDataRetrieve, {
       
       # Taking the Migration Data's geometry and converting it to Spatial Points (with the crs of the raster layer)
       geometry <- spTransform(as_Spatial(data$geometry), crs(rasterLayer))
-      print("Geometry created")
       
       # Tells us which rows to extract from geometry and edit on the migration data frame (so if there are multiple raster layers with different extents, we don't overwrite data from other layers)
       noValue <- is.na(data[[dataType]]) 
-      print("NO value")
       
       if(is.na(rows[row,"Start.Date"]) | is.na(rows[row,"End.Date"])){
         data[[dataType]][noValue] <- raster::extract(rasterLayer, geometry[noValue])
@@ -337,24 +344,23 @@ observeEvent(input$selectDataRetrieve, {
         
         data[[dataType]][noValue & withinDates] <- raster::extract(rasterLayer, geometry[noValue & withinDates])
       }
-      print("Extraction")
       
       rm(rasterLayer, geometry)
     }
     rm(rows)
     
-    print(paste("Finished Extracting Values for", dataType))
+    cat(paste("\nFinished Extracting Values for", dataType,"\n"))
   }
   rm(dataType, requestedData, layerData)
   
-  print(paste("Data Select: Finished Adding TIF File Information", "-", Sys.time() - time, "seconds"))
-  rm(time)
+  cat("\n --- Data Upload: Finished Adding Raster Layer Information --- ")
   
   # -- 
   # Exporting Data
   # --
+  cat("\n\n --- Data Select: Exporting Data --- ")
   migrationData(data)
   
-  print("Data Select: Finished")
-  print(paste("Data Select: Took", Sys.time() - totalTime, "seconds"))
+  cat("\n --- Data Upload: Finished Exporting Data --- ")
+  cat(paste("\nTook", Sys.time() - time, "Seconds"))
 })
