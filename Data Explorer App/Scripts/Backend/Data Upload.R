@@ -6,8 +6,7 @@ root <- c(Documents = path.expand("~"))
 # ---
 
 # Will store the shape file data
-shapeFileData <- NA
-
+shapeFileData <- reactiveVal(value = NULL)
 
 # Instantiate the .shp file upload button
 shinyFileChoose(
@@ -22,7 +21,7 @@ output$sfFileDisplay <- renderText({
   parseFilePaths(root, input$sfFileUpload)$datapath
 })
 
-# Select the .shp File and ID/Date Columns
+# Load the Data in After Selecting an Appropriate .shp File
 observe({
   sfFilePath <- parseFilePaths(root, input$sfFileUpload)$datapath
   
@@ -30,52 +29,62 @@ observe({
   if(length(sfFilePath) != 0){
     cat("Data Upload: Path obtained")
     
-    shapeFileData <<- st_read(sfFilePath)
-    
+    data <- st_read(sfFilePath)
     
     # Checking if the file is a point file
     cat("\n\n --- Data Upload: Checking if the file is a point file --- ")
-    if(!all(st_geometry_type(shapeFileData) == "POINT")){
+    if(!all(st_geometry_type(data) == "POINT")){
       cat("\nFile is not a point file")
       stop("File is not a point file!") # If the file is not, throw an error
     } 
     # If the file is a point file, transform the points to a particular projection
     else {
       cat("\nFile is a point file; reprojecting to +proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
-      st_transform(shapeFileData, crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
+      st_transform(data, crs = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs +ellps=GRS80 +towgs84=0,0,0")
     }
     
-    cat("\n\n --- Data Upload: Rendering the column select for ID/Date --- ")
-    output$sfColSelect <- renderUI({
-      columnNames <- colnames(shapeFileData)
-      
-      uiOutput <- tagList(titlePanel("Select ID and Date Column"))
-      
-      # Adding Radio Buttons for ID Column Select
-      uiOutput <- tagList(uiOutput, isolate(radioButtons(
-        inputId <- "sfIdCol",
-        label = "Select ID Column",
-        choices = columnNames,
-        selected = character(0)
-      )))
-      
-      # Adding Radio Buttons for Date Column Select
-      uiOutput <- tagList(uiOutput, isolate(radioButtons(
-        inputId <- "sfDateCol",
-        label = "Select Date Column",
-        choices = columnNames,
-        selected = character(0)
-      )))
-      
-    })
-    cat("\n --- Data Upload: Finished rendering the column select for ID/Date --- ")
+    shapeFileData(data)
   }
+})
 
-
+# Load the Column Names (When Data is Loaded)
+output$sfColSelect <- renderUI({
+  data <- shapeFileData()
+  
+  if(is.data.frame(data)){
+    cat("\n\n --- Data Upload: Rendering the column select for ID/Date --- ")
+    
+    
+    columnNames <- colnames(data)
+    
+    uiOutput <- tagList(titlePanel("Select ID and Date Column"))
+    
+    # Adding Radio Buttons for ID Column Select
+    uiOutput <- tagList(uiOutput, isolate(radioButtons(
+      inputId <- "sfIdCol",
+      label = "Select ID Column",
+      choices = columnNames,
+      selected = character(0)
+    )))
+    
+    # Adding Radio Buttons for Date Column Select
+    uiOutput <- tagList(uiOutput, isolate(radioButtons(
+      inputId <- "sfDateCol",
+      label = "Select Date Column",
+      choices = columnNames,
+      selected = character(0)
+    )))
+    
+    cat("\n --- Data Upload: Finished rendering the column select for ID/Date --- ")
+    
+    uiOutput
+  }
 })
 
 # Retrieve Other Information, Calculate Movement Parameters, and Save File
 observeEvent(input$sfSubmit, {
+  data <- shapeFileData()
+  
   # ---
   # Validation: Checking that all necessary fields are filled
   # ---
@@ -84,7 +93,7 @@ observeEvent(input$sfSubmit, {
   # Commented out for now as validation is not working 
   validate(
     # Check that there is data loaded
-    need(shapeFileData, message = 'There is no ShapeFile Loaded'),
+    need(data, message = 'There is no ShapeFile Loaded'),
     
     # Check that the id/date columns are selected
     need(input$sfIdCol, message = 'ID Column is empty'),
@@ -105,20 +114,20 @@ observeEvent(input$sfSubmit, {
   # Changing the id and date column names to "id" and "date", respectively (to later use dplyr::distinct)
   cat("\n\n - Changing name of ID and Date Columns - ")
   
-  columnNames <- colnames(shapeFileData)
+  columnNames <- colnames(data)
   
   indices <- match(c(input$sfIdCol, input$sfDateCol), columnNames)
   columnNames[indices[1]] <- "id" # Changing ID column name to "id"
   columnNames[indices[2]] <- "date" # Changing date column name to "date"
   
-  colnames(shapeFileData) <<- columnNames
+  colnames(data) <- columnNames
   
   rm(columnNames, indices)
   cat("\nFinished changing name of ID and Date Columns")
   
   # Calculating Movement Parameters
   cat("\n\n - Converting date column to POSIXct - ")
-  shapeFileData$date <<- lubridate::ymd_hms(shapeFileData$date, 
+  data$date <- lubridate::ymd_hms(data$date, 
                                             quiet = TRUE,
                                             truncated = 3
                                             ) # Converting Date Column to POSIXct format
@@ -128,38 +137,38 @@ observeEvent(input$sfSubmit, {
   
   
   # Warn the user if there were dates that were round NA 
-  if(sum(is.na(shapeFileData)) > 0){
-    warning(paste(sum(is.na(shapeFileData)), "rows will be deleted because the date was not read in properly"))
+  if(sum(is.na(data)) > 0){
+    warning(paste(sum(is.na(data)), "rows will be deleted because the date was not read in properly"))
   }
   
   
   cat("\n\n - Removing NA values - ")
-  shapeFileData <<- na.omit(shapeFileData) # Removing all rows with NA values
+  data <- na.omit(data) # Removing all rows with NA values
   cat("\nFinished removing NA values")
   
   
   cat("\n\n - Removing duplicate values - ")
-  shapeFileData <<- dplyr::distinct(shapeFileData, id, date, .keep_all = TRUE) # Removing duplicate values
+  data <- dplyr::distinct(data, id, date, .keep_all = TRUE) # Removing duplicate values
   cat("\nFinished removing duplicate values")
   
   
   cat("\n\n - Ordering by ID and Date - ")
-  shapeFileData <<- shapeFileData[order(shapeFileData$id, shapeFileData$date),] # Ordering by ID and Date
+  data <- data[order(data$id, data$date),] # Ordering by ID and Date
   cat("\nFinished ordering by ID and Date")
   
   
   cat("\n\n - Calculating Bursts - ")
-  shapeFileData$burst <<- CalcBurst(data = shapeFileData, Tmax = 3600 * as.numeric(input$sfTmax)) # Adding Bursts
+  data$burst <- CalcBurst(data, Tmax = 3600 * as.numeric(input$sfTmax)) # Adding Bursts
   cat("\nFinished calculating Bursts")
   
   
   cat("\n\n - Calculating Movement Parameters - \n")
-  shapeFileData <<- CalcMovParams(data = shapeFileData) # Calculating Parameters
+  data <- CalcMovParams(data) # Calculating Parameters
   cat("\nFinished Calculating Movement Parameters")
   
   
   cat("\n\n - Removing Unnecessary Columns - \n")
-  shapeFileData <<- dplyr::select(shapeFileData, !c(burst, dt, abs.angle, StepFlag))
+  data <- dplyr::select(data, !c(burst, dt, abs.angle, StepFlag))
   cat("\nFinished Removing Columns")
   
   cat("\n --- Data Upload: Movement Parameters Calculated --- ")
@@ -172,15 +181,14 @@ observeEvent(input$sfSubmit, {
   # ---
   cat("\n\n --- Data Upload: Saving Migration Data --- ")
   
-  
   # Converting date column back to characters
   cat("\n\n - Converting date column back to characters - ")
-  shapeFileData$date <<- as.character(shapeFileData$date)
+  data$date <- as.character(data$date)
   cat("\nFinished converting date column back to characters")
   
   # Overwriting the data file
   cat("\n\n - Overwriting the migration data file - ")
-  st_write(shapeFileData, 
+  st_write(data, 
            dsn = paste(files$migrationData[3], files$migrationData[2], sep = "/"), 
            driver = "ESRI Shapefile", 
            append = FALSE, 
@@ -188,6 +196,10 @@ observeEvent(input$sfSubmit, {
   )
   cat("\nFinished overwriting the migration data file")
   
+  shapeFileData(NULL) # Clearing the shapeFileData to save memory
+  output$sfFileDisplay <- renderText({
+    "Migration Data Saved"
+  })
   
   cat("\n --- Data Upload: Migration Data Saved --- ")
   
@@ -199,33 +211,37 @@ observeEvent(input$sfSubmit, {
 # Server Code for TIF File Upload
 # ---
 
-layerPath <- NA
+layerPath <- reactiveVal(value = NULL)
 
-# File Select for the .tif and .img files
+# File Chooser
+shinyFileChoose(
+  input = input, 
+  id = 'layerUpload',
+  roots = root,
+  filetypes = c('tif', 'img'),
+)
+
+
+# Update the Layer Paths after files are selected
 observe({
-  shinyFileChoose(
-    input = input, 
-    id = 'layerUpload',
-    roots = root,
-    filetypes = c('tif', 'img'),
-  )
+  layerPath(parseFilePaths(root, input$layerUpload)$datapath)
+})
+
+output$defineLayerInfo <- renderUI({
+  layers <- layerPath()
   
-  layerPath <<- parseFilePaths(root, input$layerUpload)$datapath
-  
-  # Check if there are layer paths provided 
-  if(length(layerPath) != 0){
+  if(length(layers) != 0){
     cat("\nData Upload: Layer Path/Paths Found")
     
+    uiOutput <- tagList(titlePanel("Provide Information on Each Layer"))
+    
     cat("\n\n --- Data Upload: Rendering UI for each path --- ")
-    output$defineLayerInfo <- renderUI({
-      uiOutput <- tagList(titlePanel("Provide Information on Each Layer"))
+    for(i in 1:ncell(layers)){
+      path <- layers[i]
       
-      for(i in 1:ncell(layerPath)){
-        path <- layerPath[i]
-        
-        # Path of the file 
-        uiOutput <- tagList(uiOutput, 
-        
+      # Path of the file 
+      uiOutput <- tagList(uiOutput, 
+                          
         titlePanel(path),
         
         isolate(radioButtons(
@@ -265,34 +281,15 @@ observe({
             label = "Enter the Date Range in which this file is valid."
           )
         )))
-        
-      }
-
-      uiOutput
-    })
+    }
     cat("\n --- Data Upload: Finished rendering UI for each path --- ")
+    uiOutput
   }
 })
 
-
 # Information Recording
 observeEvent(input$layerSubmit, {
-  # ---
-  # Validation
-  # ---
-  cat("\n\n --- Data Upload: Validating for layers --- ")
-  
- # validate(
-    ## Checking if layer exists
-    #need(length(layerPath) != 0 & file.exists(layerPath), message = "Layer Does Not Exist"),
-    
-    # Checking if a data type is provided
-    #need(length(input$layerPurpose) != 0 | length(input$layerPurposeText) != 0, message = "Data Type Not Provided")
- # )
-  
-  cat("\n --- Data Upload: Validation Tests Passed --- ")
-  
-  # -----
+  layers <- layerPath()
   
   # ---
   # Extracting Information
@@ -302,9 +299,9 @@ observeEvent(input$layerSubmit, {
   # The information will be saved to a .csv file for convenience 
   layerInformation <- data.frame(matrix(ncol = 4, nrow = 0))
   
-  for(i in 1:ncell(layerPath)){
+  for(i in 1:ncell(layers)){
     # Extracting the path
-    path <- layerPath[i]
+    path <- layers[i]
     cat(paste("\nExtracting information for", path))
     
     # Extracting the Type of Data the .tif File Contains
@@ -347,4 +344,9 @@ observeEvent(input$layerSubmit, {
   rm(layerInformation, existingData)
   
   cat("\n --- Data Upload: Finished saving layer information --- ")
+  
+  layerPath(NULL)
+  output$layerConsole <- renderText({
+    "Raster Layers Uploaded"
+  })
 })

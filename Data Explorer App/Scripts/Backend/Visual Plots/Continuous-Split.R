@@ -7,8 +7,6 @@ ChronContSplit <- function(migrationData, dataType, groupBy, groupings, chronolo
   
   
   # Step 2: Calcuate the Averages (for each individual ID)
-  time <- Sys.time() # Keeping track of time (to optimize time later)
-  
   averages <- numeric(nrow(data))
   i <- 1
   if(chronological){
@@ -44,8 +42,6 @@ ChronContSplit <- function(migrationData, dataType, groupBy, groupings, chronolo
       
     }
   }
-  
-  print(paste("Data Visual: Calculating Averages", "-", Sys.time() - time, "seconds"))
   
   # Adding the averages column
   data$average <- averages

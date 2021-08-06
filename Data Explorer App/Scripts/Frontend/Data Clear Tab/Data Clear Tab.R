@@ -1,3 +1,7 @@
+source("./Scripts/Frontend/Data Clear Tab/Clear Migration Data.R", local = TRUE)
+source("./Scripts/Frontend/Data Clear Tab/Clear Biological Year.R", local = TRUE)
+source("./Scripts/Frontend/Data Clear Tab/Clear Raster Layers.R", local = TRUE)
+
 dataClearTab <- tabPanel(
   # Title of Tab 
   title = "Clear Data",
@@ -5,13 +9,9 @@ dataClearTab <- tabPanel(
   # UI Elements
   titlePanel("Clear Data"),
   
-  actionButton(
-    inputId = "clearDataButton", 
-    label = "Clear Existing Data"
-    ),
-  
-  actionButton(
-    inputId = "clearSeasonDefButton",
-    label = "Clear Season Definitions"
+  navlistPanel(
+    clearMigrationPanel,
+    clearBioYearPanel,
+    clearRasterPanel
   )
 )

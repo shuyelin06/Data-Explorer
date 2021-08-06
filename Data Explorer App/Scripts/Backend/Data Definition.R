@@ -39,14 +39,12 @@ output$seasonDefining <- renderUI({
   
 })
 
-observe({
-  
-})
 # On click of the save button, validate that all the data necessary is provided, and save it to a .csv file for later use.
 observeEvent(input$seasonSave, {
   # ---
   # Validating that all months have a defined season to them
   # ---
+  cat("\n\n --- Defining BioYear: Validating... --- ")
   
   tests <- c()
   
@@ -59,12 +57,13 @@ observeEvent(input$seasonSave, {
   }
   validate(tests)
   
-  print("Defining Biological Year: Data Validation Passed")
+  cat("\n --- Defining BioYear: Valiation Check Passed --- ")
   
   
   # ---
   # If validation is successful, save the season definitions for later use
   # ---
+  cat("\n\n --- Defining BioYear: Saving BioYear --- ")
   
   seasonDefinitions <- data.frame(matrix(ncol = 3, nrow = 12))
   
@@ -91,7 +90,7 @@ observeEvent(input$seasonSave, {
   
   write.csv(seasonDefinitions, file = paste(files$bioYear[3], files$bioYear[2], sep = "/"), row.names = FALSE)
   
-  print("Defining Biological Year: Biological Year Saved")
+  cat("\n --- Defining BioYear: BioYear Saved --- ")
 })
 
 # ---
@@ -136,6 +135,8 @@ output$layerDefineOutput <- renderUI(
 )
 
 observeEvent(input$layerDefineSave, {
+  cat("\n\n --- Defining Layers: Saving Continuous/Discrete Definitions --- ")
+  
   dataTypes <- unique(layerData()$Data.Type)
   
   dataframe <- data.frame(matrix(ncol = 2, nrow = 0))
@@ -152,12 +153,15 @@ observeEvent(input$layerDefineSave, {
     
     if(text != ""){
       dataframe <- rbind(dataframe, c(type, text))
+      cat(paste("\n", type, "-", text))
     }
   }
   
   colnames(dataframe) <- c("DataType", "Definition")
   
   write.csv(dataframe, paste(files$layerDefine[3], files$layerDefine[2], sep = "/"))
+  
+  cat("\n --- Defining Layers: Finished Saving Continuous/Discrete Definitions --- ")
 })
 
 # ---
@@ -180,6 +184,8 @@ output$selectAddData <- renderUI(
         label = "Choose What Raster Layer Data to Load",
         choices = dataTypes
       )
+    } else {
+      h3("No Raster Layers Found")
     }
   }
 )
@@ -194,9 +200,13 @@ observeEvent(input$selectDataRetrieve, {
   cat("\n\n --- Data Select: Importing and Formatting Migration Data --- ")
 
   # Importing Migration Data
-  cat("\n\n - Importing Migration Data - \n")
+  cat("\n\n - Importing Migration Data -")
   data <- st_read(paste(files$migrationData[3], files$migrationData[2], sep = "/"))
   cat("\nFinished Importing Migration Data")
+  
+  if(nrow(data) == 0){
+    stop("Migration Data File is Empty")
+  }
   
   # Renaming Columns
   cat("\n\n - Renaming Columns - \n")
@@ -204,12 +214,12 @@ observeEvent(input$selectDataRetrieve, {
   cat("\nFinished Renaming Columns")
   
   # Converting ID Column to Numeric
-  cat("\n\n - Converting ID Column to Numeric - \n")
+  cat("\n\n - Converting ID Column to Numeric -")
   data$id <- as.numeric(data$id)
   cat("\nFinished Converting ID Column to Numeric")
   
   # Converting Date Column to POSIXct
-  cat("\n\n - Converting Date Column to POSIXct - \n")
+  cat("\n\n - Converting Date Column to POSIXct - ")
   data$date <- lubridate::ymd_hms(data$date, 
                                   quiet = TRUE,
                                   truncated = 3
@@ -231,13 +241,13 @@ observeEvent(input$selectDataRetrieve, {
   
   
   # Adding Month to the Migration Data
-  cat("\n\n - Adding Month Column to Data - \n")
+  cat("\n\n - Adding Month Column to Data -")
   data$month <- month(data$date)
   cat("\nFinished Adding Month Column")
   
   
   # Adding Seasons to the Migration Data
-  cat("\n\n - Adding Seasons Column to Data - \n")
+  cat("\n\n - Adding Seasons Column to Data -")
   for(i in 1:nrow(bioYearData)){
     month <- bioYearData$number[i] # Obtaining the month
     season <- bioYearData$season[i] # Obtaining the associated season
@@ -250,7 +260,7 @@ observeEvent(input$selectDataRetrieve, {
   
   
   # Adding Biological Year to the Migration Data
-  cat("\n\n - Adding Biological Year Column to Data - \n")
+  cat("\n\n - Adding Biological Year Column to Data -")
   startMonth <- bioYearData$number[1] # Finding the start month to the biological year
   rm(bioYearData) # Removing bioYearData (no longer needed)
   
@@ -306,7 +316,7 @@ observeEvent(input$selectDataRetrieve, {
   layerData <- read.csv(paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"))
   
   for(dataType in requestedData){
-    cat(paste("\n\n - Extracting Values for", dataType,"- \n"))
+    cat(paste("\n\n - Extracting Values for", dataType,"-"))
     
     # Adding a new blank column for the data type
     data[[dataType]] <- NA
@@ -349,7 +359,7 @@ observeEvent(input$selectDataRetrieve, {
     }
     rm(rows)
     
-    cat(paste("\nFinished Extracting Values for", dataType,"\n"))
+    cat(paste("\nFinished Extracting Values for", dataType))
   }
   rm(dataType, requestedData, layerData)
   

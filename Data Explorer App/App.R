@@ -2,8 +2,18 @@
 # Remove All Variables: rm(list = ls(all = TRUE))
 
 # Checking that the user has the required packages installed
-if(any(c("shiny", "shinyFiles", "circular", "sf", "raster", "dplyr", "lubridate", "ggplot2") %in% installed.packages()[,1] == FALSE)){
-  stop("You must install the following packages: circular, sf, raster, dplyr, shiny")
+if(any(c("shiny", 
+         "shinyFiles", 
+         "ggplot2",
+         "cowplot",
+         "lubridate",
+         "dplyr",
+         "raster",
+         "sf",
+         "circular") 
+       %in% installed.packages()[,1] == FALSE)){
+  
+  stop("You must install the following packages: shiny, shinyFiles, ggplot2, cowplot, lubridate, dplyr, raster, sf, and circular")
 }
 
 

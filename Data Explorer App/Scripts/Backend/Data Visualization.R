@@ -97,23 +97,27 @@ output$visualView <- renderPlot({
   
   # Checking if a groupBy and dataType is selected
   if(is.null(displayData)){
-    uiOutput <- h3("Please Select Data and a Grouping to Display")
+    cat("\n\n Unable to Plot: No DataTypes Selected")
   } 
   
   # Checking if SplitIDs is selected and, if so, if any IDs are selected
   else if(splitIDs & is.null(selectedIDs)){
-    uiOutput <- h3("Please Select IDs")
+    cat("\n\n Unable to Plot: No IDs Selected ")
   } 
   
   # If all conditions pass, plot the data 
   else {
+    cat("\n\n --- Data Visualization: Plotting --- ")
     # ---
     # Preparing for Plotting
     # ---
     
+    cat("\n\n - Removing Geometry Column from Data - ")
     # Removing Geometry Column from Data
     migrationData <- st_drop_geometry(migrationData)
     
+    
+    cat("\n\n - Extracting the GroupBy Selection - ")
     # Converting groupBy to the appropriate column name
     if(groupBy == "Biological Year"){
       groupBy <- "bioYear"
@@ -132,7 +136,10 @@ output$visualView <- renderPlot({
     
     # Plots for if GroupBy is "None"
     if(groupBy == "None"){
+      cat("\n\n - Group By is None - Creating Density/Bar Plots - ")
       for(dataType in displayData){
+        cat(paste("\n- Plotting for", dataType))
+            
         # Pulling Data
         data <- migrationData[!is.na(migrationData[[dataType]]), c("id", dataType)]
         if(splitIDs) data <- data[data$id %in% selectedIDs,] # If splitting IDs, only keep the IDs selected
@@ -141,32 +148,48 @@ output$visualView <- renderPlot({
         plot <- ggplot(data, aes((!!!rlang::syms(dataType))))
         
         # Continuous Plot (Density Plot)
-        if(dataType %in% layerDefine$DataType[layerDefine$Definition == "Continuous"]) plot <- plot + geom_density()
+        if(dataType %in% layerDefine$DataType[layerDefine$Definition == "Continuous"]) {
+          plot <- plot + geom_density()
+          plot <- plot + ylab("Density")
+          plot <- plot + ggtitle(paste("Density of", dataType))
+        }
         # Discrete Plot (Bar Plot)
-        else plot <- plot + geom_bar()
+        else {
+          plot <- plot + geom_bar()
+          plot <- plot + ylab("Frequency")
+          plot <- plot + ggtitle(paste("Frequency of", dataType))
+        }
 
         
         # If splitting by IDs, use facet_wrap        
         if(splitIDs) plot <- plot + facet_wrap(~id)
         
+        # Adding Labels
+        plot <- plot + xlab(dataType)
+        
         plots <- append(plots, list(plot))
+        cat(paste("\nFinished plotting for", dataType))
       }
     }
     
     # Plotting for Different GroupBys
     else {
+      cat("\n\n - Group By is Not None - ")
       groupings <- NA
       if(chronological){
+        cat("\n - Chronological is True - ")
         temp <- dplyr::distinct(dplyr::select(migrationData, c('bioYear', groupBy)))
         groupings <- paste(temp$bioYear, temp[[groupBy]], sep = "-")
         rm(temp)
       } else {
+        cat("\n - Chronological is False - ")
         groupings <- unique(migrationData[[groupBy]])
       }
       
       
       # Plots for Continuous Data
       for(dataType in displayData[displayData %in% layerDefine$DataType[layerDefine$Definition == "Continuous"]]){
+        cat(paste("\n- Plotting for", dataType))
         # Plotting for Split IDs
         if(splitIDs){
           plots <- append(plots, list(ChronContSplit(migrationData, dataType, groupBy, groupings, chronological, selectedIDs)))
@@ -175,27 +198,25 @@ output$visualView <- renderPlot({
         else { 
           plots <- append(plots, list(ChronContNoSplit(migrationData, dataType, groupBy, groupings, chronological)))
         }
-        
+        cat(paste("\nFinished plotting for", dataType))
       }
       
       # Plots for Discrete Data
       for(dataType in displayData[displayData %in% layerDefine$DataType[layerDefine$Definition == "Discrete"]]){
+        cat(paste("\n- Plotting for", dataType))
         if(splitIDs){
           plots <- append(plots, list(ChronDiscSplit(migrationData, dataType, groupBy, groupings, chronological, selectedIDs)))
         } 
         else {
           plots <- append(plots, list(ChronDiscNoSplit(migrationData, dataType, groupBy, groupings, chronological)))
         }
+        cat(paste("\nFinished plotting for", dataType))
       }
     }
   
     uiOutput <- plot_grid(plotlist = plots)
+    cat("\n --- Data Visualization: Finished Plotting --- ")
   }
     
   uiOutput
-})
-
-# Console messages to tell the user if they're missing anything
-output$visualConsole <- renderText({
-  
 })
