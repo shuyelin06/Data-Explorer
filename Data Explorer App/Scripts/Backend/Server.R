@@ -1,6 +1,6 @@
 # Serverside Code Main File
 server <- function(input, output, session) {
-  # Reactive File Reader for the RasterLayer data
+  # Reactive File Readers
   layerData <- reactiveFileReader(1000, session, paste(files$rasterLayers[3], files$rasterLayers[2], sep = "/"), read.csv)
   layerDefinitions <- reactiveFileReader(1000, session, paste(files$layerDefine[3], files$layerDefine[2], sep = "/"), read.csv)
   

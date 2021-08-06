@@ -1,10 +1,7 @@
 ChronContNoSplit <- function(migrationData, dataType, groupBy, groupings, chronological){
-  print(chronological)
   data <- data.frame(grouping = groupings)
   
   # Calcuating the Averages (for Later Plotting)
-  time <- Sys.time()
-  
   averages <- numeric(nrow(data))
   if(chronological){ # Chronological Code
     
@@ -33,8 +30,6 @@ ChronContNoSplit <- function(migrationData, dataType, groupBy, groupings, chrono
       averages[i] <- mean(na.omit(values))
     }
   }
- 
-  print(paste("Data Visual: Calculating Averages", "-", Sys.time() - time, "seconds"))
   
   # Adding the averages column
   data$average <- averages
