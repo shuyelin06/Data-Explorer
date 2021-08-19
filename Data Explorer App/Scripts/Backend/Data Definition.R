@@ -363,7 +363,7 @@ observeEvent(input$selectDataRetrieve, {
   }
   rm(dataType, requestedData, layerData)
   
-  cat("\n --- Data Upload: Finished Adding Raster Layer Information --- ")
+  cat("\n --- Data Select: Finished Adding Raster Layer Information --- ")
   
   # -- 
   # Exporting Data
@@ -371,6 +371,6 @@ observeEvent(input$selectDataRetrieve, {
   cat("\n\n --- Data Select: Exporting Data --- ")
   migrationData(data)
   
-  cat("\n --- Data Upload: Finished Exporting Data --- ")
+  cat("\n --- Data Select: Finished Exporting Data --- ")
   cat(paste("\nTook", Sys.time() - time, "Seconds"))
 })

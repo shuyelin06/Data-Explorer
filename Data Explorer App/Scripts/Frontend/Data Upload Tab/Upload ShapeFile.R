@@ -12,7 +12,7 @@ sfUploadNav <- tabPanel(
       
       br(),
       
-      textOutput(
+      verbatimTextOutput(
         outputId = "sfFileDisplay"
       )
     ),

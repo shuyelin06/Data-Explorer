@@ -1,5 +1,5 @@
 # Root directory for the file selects will begin from
-root <- c(Documents = path.expand("~"))
+root <- c(Home = path.expand("~"))
 
 # ---
 # Server Code for the Shape File Upload
